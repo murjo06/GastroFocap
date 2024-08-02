@@ -55,8 +55,10 @@ bool GastroFlatcap::updateProperties() {
 
     if(isConnected()) {
         // TODO: Call define* for any custom properties only visible when connected.
+        defineProperty(&ParkCapSP);
     } else {
         // TODO: Call deleteProperty for any custom properties only visible when connected.
+        deleteProperty(ParkCapSP.name);
     }
 
     return true;
@@ -162,4 +164,15 @@ bool GastroFlatcap::EnableLightBox(bool enable) {
     INDI_UNUSED(enable);
 
     return false;
+}
+
+IPState DummyDustcap::ParkCap() {
+    // TODO: Implement your own code to close the dust cap.
+    return IPS_OK;
+}
+
+IPState DummyDustcap::UnParkCap() {
+    // TODO: Implement your own code to open the dust cap.
+
+    return IPS_OK;
 }
