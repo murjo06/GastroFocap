@@ -22,13 +22,14 @@ bool GastroFlatcap::initProperties() {
 
     // initialize the parent's properties first
     initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
+    initDustCapProperties(getDefaultName(), MAIN_CONTROL_TAB);
 
     // TODO: Add any custom properties you need here.
 
     // Add debug/simulation/etc controls to the driver.
     addAuxControls();
 
-    setDriverInterface(LIGHTBOX_INTERFACE | AUX_INTERFACE);
+    setDriverInterface(LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE | AUX_INTERFACE);
 
     serialConnection = new Connection::Serial(this);
     serialConnection->registerHandshake([&]() { return Handshake(); });
