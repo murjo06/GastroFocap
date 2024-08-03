@@ -21,9 +21,13 @@ Recieve  : *D19000\n    //confirms light turned off.
 */
 
 #include <Servo.h>
+#include <EEPROM.h>
 
 #define SHUTTER_OPEN = 30		//degrees for servo motor
 #define SHUTTER_CLOSED = 300
+
+#define SHUTTER_ADDRESS = 0;
+#define BRIGHTNESS_ADDRESS = 1;
 
 int ledPin = 5;
 int brightness = 0;
@@ -100,6 +104,7 @@ void handleSerial() {
         	This command is only supported on the Flip-Flat!
     	    */
             case 'O': {
+				EEPROM.write(SHUTTER_ADDRESS, OPEN);
         	    sprintf(temp, "*O%d000", deviceId);
         	    setShutter(OPEN);
         	    Serial.println(temp);
@@ -113,6 +118,7 @@ void handleSerial() {
         	This command is only supported on the Flip-Flat!
     	    */
             case 'C': {
+				EEPROM.write(SHUTTER_ADDRESS, CLOSED);
         	    sprintf(temp, "*C%d000", deviceId);
         	    setShutter(CLOSED);
         	    Serial.println(temp);
@@ -154,6 +160,7 @@ void handleSerial() {
     	    */
             case 'B': {
         	    brightness = atoi(data);
+				EEPROM.write(BRIGHTNESS_ADDRESS, brightness);
         	    if(lightStatus == ON) {
         	    	analogWrite(ledPin, brightness);
                 }
@@ -169,6 +176,9 @@ void handleSerial() {
         	yyy = current brightness value from 000-255
     	    */
             case 'J': {
+				if(EEPROM.read(BRIGHTNESS_ADDRESS) != brightness) {
+					EEPROM.write(BRIGHTNESS_ADDRESS, brightness);
+				}
                 sprintf(temp, "*J%d%03d", deviceId, brightness);
                 Serial.println(temp);
                 break;
@@ -178,9 +188,9 @@ void handleSerial() {
         	Request: >S000\n
         	Return : *SidMLC\n
         	id = deviceId
-        	M  = motor status( 0 stopped, 1 running)
-        	L  = light status( 0 off, 1 on)
-        	C  = Cover Status( 0 moving, 1 closed, 2 open)
+        	M  = motor status (0 stopped, 1 running)
+        	L  = light status (0 off, 1 on)
+        	C  = cover status (0 moving, 1 closed, 2 open)
     	    */
             case 'S': {
                 sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
@@ -209,6 +219,7 @@ void setShutter(int shutter) {
 	if(shutter != OPEN || shutter != CLOSED) {
 		return;
 	}
+	EEPROM.write(SHUTTER_ADDRESS, shutter);
 	if(shutter == OPEN && coverStatus != OPEN) {
 		coverStatus = OPEN;
 		servo.write(SHUTTER_OPEN);
