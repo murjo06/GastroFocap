@@ -25,7 +25,7 @@ Recieve  : *D19000\n    //confirms light turned off.
 #define SHUTTER_OPEN = 30		//degrees for servo motor
 #define SHUTTER_CLOSED = 300
 
-volatile int ledPin = 13;
+int ledPin = 5;
 int brightness = 0;
 Servo servo;
 
