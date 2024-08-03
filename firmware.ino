@@ -20,11 +20,14 @@ Send     : >D000\n      //turn light off (brightness value should not be changed
 Recieve  : *D19000\n    //confirms light turned off.
 */
 
-#define SHUTTER_OPEN = 30 // degrees for servo motor
+#include <Servo.h>
+
+#define SHUTTER_OPEN = 30		//degrees for servo motor
 #define SHUTTER_CLOSED = 300
 
 volatile int ledPin = 13;
 int brightness = 0;
+Servo servo;
 
 enum devices {
 	FLAT_MAN_L = 10,
@@ -49,13 +52,13 @@ enum shutterStatuses {
 	OPEN
 };
 
-
 int deviceId = FLIP_FLAT;
 int motorStatus = STOPPED;
 int lightStatus = OFF;
 int coverStatus = UNKNOWN;
 
 void setup() {
+	servo.attach(9);
     Serial.begin(9600);
     pinMode(ledPin, OUTPUT);
     analogWrite(ledPin, 0);
@@ -65,16 +68,15 @@ void loop() {
     handleSerial();
 }
 
-
 void handleSerial() {
     if(Serial.available() >= 6) {
         char* cmd;
         char* data;
         char temp[10];
-        int len = 0;    
+        int len = 0;
         char str[20];
-        memset(str, 0, 20); 
-        Serial.readBytesUntil('\n', str, 20);   
+        memset(str, 0, 20);
+        Serial.readBytesUntil('\n', str, 20);
     	cmd = str + 1;
     	data = str + 2;
 
@@ -89,12 +91,12 @@ void handleSerial() {
     	        sprintf(temp, "*P%d000", deviceId);
     	        Serial.println(temp);
     	        break;
-            } 
+            }
             /*
         	Open shutter
         	Request: >O000\n
         	Return : *Oii000\n
-        	id = deviceId   
+        	id = deviceId
         	This command is only supported on the Flip-Flat!
     	    */
             case 'O': {
@@ -107,7 +109,7 @@ void handleSerial() {
         	Close shutter
         	Request: >C000\n
         	Return : *Cii000\n
-        	id = deviceId   
+        	id = deviceId
         	This command is only supported on the Flip-Flat!
     	    */
             case 'C': {
@@ -141,7 +143,7 @@ void handleSerial() {
         	    lightStatus = OFF;
         	    analogWrite(ledPin, 0);
         	    break;
-            } 
+            }
     	    /*
         	Set brightness
         	Request: >Bxxx\n
@@ -151,10 +153,10 @@ void handleSerial() {
         	yyy = value that brightness was set from 000-255
     	    */
             case 'B': {
-        	    brightness = atoi(data);    
+        	    brightness = atoi(data);
         	    if(lightStatus == ON) {
         	    	analogWrite(ledPin, brightness);
-                } 
+                }
         	    sprintf(temp, "*B%d%03d", deviceId, brightness);
         	    Serial.println(temp);
                 break;
@@ -181,7 +183,7 @@ void handleSerial() {
         	C  = Cover Status( 0 moving, 1 closed, 2 open)
     	    */
             case 'S': {
-                sprintf(temp, "*S%d%d%d%d",deviceId, motorStatus, lightStatus, coverStatus);
+                sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
                 Serial.println(temp);
                 break;
             }
@@ -196,22 +198,25 @@ void handleSerial() {
                 Serial.println(temp);
                 break;
             }
-        }         
-    	while( Serial.available() > 0) {
+        }
+    	while(Serial.available() > 0) {
     		Serial.read();  
         }
     }
 }
 
 void setShutter(int shutter) {
+	if(shutter != OPEN || shutter != CLOSED) {
+		return;
+	}
 	if(shutter == OPEN && coverStatus != OPEN) {
 		coverStatus = OPEN;
-		// TODO: Implement code to OPEN the shutter.
+		servo.write(SHUTTER_OPEN);
 	} else if(shutter == CLOSED && coverStatus != CLOSED) {
 		coverStatus = CLOSED;
-		// TODO: Implement code to CLOSE the shutter
+		servo.write(SHUTTER_CLOSED);
 	} else {
-		// TODO: Actually handle this case
 		coverStatus = shutter;
+		servo.write(shutter == OPEN ? SHUTTER_OPEN : SHUTTER_CLOSED);
 	}
 }
