@@ -26,10 +26,9 @@ Recieve  : *D19000\n    //confirms light turned off.
 #define SHUTTER_OPEN = 30		//degrees for servo motor
 #define SHUTTER_CLOSED = 300
 
-#define MOTOR_ADDRESS = 0;
-#define COVER_ADDRESS = 1;
-#define LIGHT_ADDRESS = 2;
-#define BRIGHTNESS_ADDRESS = 3;
+#define COVER_ADDRESS = 0;
+#define LIGHT_ADDRESS = 1;
+#define BRIGHTNESS_ADDRESS = 2;
 
 #define MIN_SERVO_DELAY 50;
 
@@ -61,7 +60,7 @@ enum shutterStatuses {
 };
 
 int deviceId = FLIP_FLAT;
-int motorStatus = EEPROM.read(MOTOR_ADDRESS);
+int motorStatus = STOPPED;
 int lightStatus = EEPROM.read(LIGHT_ADDRESS);
 int coverStatus = EEPROM.read(COVER_ADDRESS);
 
