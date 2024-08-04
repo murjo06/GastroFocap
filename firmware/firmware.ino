@@ -33,10 +33,7 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define SHUTTER_OPEN = 30		//degrees for servo motor
-#define SHUTTER_CLOSED = 300
-
-#define MIN_SERVO_DELAY 500;
+#define MIN_SERVO_DELAY 200;
 
 int ledPin = 5;
 int brightness = 0;
