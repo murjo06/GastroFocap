@@ -28,7 +28,10 @@ Recieve  : *D19000\n    //confirms light turned off.
 
 #define MOTOR_ADDRESS = 0;
 #define COVER_ADDRESS = 1;
-#define BRIGHTNESS_ADDRESS = 2;
+#define LIGHT_ADDRESS = 2;
+#define BRIGHTNESS_ADDRESS = 3;
+
+#define MIN_SERVO_DELAY 50;
 
 int ledPin = 5;
 int brightness = 0;
@@ -58,9 +61,9 @@ enum shutterStatuses {
 };
 
 int deviceId = FLIP_FLAT;
-int motorStatus = STOPPED;
-int lightStatus = OFF;
-int coverStatus = UNKNOWN;
+int motorStatus = EEPROM.read(MOTOR_ADDRESS);
+int lightStatus = EEPROM.read(LIGHT_ADDRESS);
+int coverStatus = EEPROM.read(COVER_ADDRESS);
 
 void setup() {
 	servo.attach(9);
@@ -222,11 +225,20 @@ void setShutter(int shutter) {
 	if(shutter == OPEN && coverStatus != OPEN) {
 		coverStatus = OPEN;
 		servo.write(SHUTTER_OPEN);
+		motorStatus = RUNNING;
+		delay(MIN_SERVO_DElAY);
+		motorStatus = STOPPED;
 	} else if(shutter == CLOSED && coverStatus != CLOSED) {
 		coverStatus = CLOSED;
 		servo.write(SHUTTER_CLOSED);
+		motorStatus = RUNNING;
+		delay(MIN_SERVO_DElAY);
+		motorStatus = STOPPED;
 	} else {
 		coverStatus = shutter;
 		servo.write(shutter == OPEN ? SHUTTER_OPEN : SHUTTER_CLOSED);
+		motorStatus = RUNNING;
+		delay(MIN_SERVO_DElAY);
+		motorStatus = STOPPED;
 	}
 }
