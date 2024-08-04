@@ -37,8 +37,8 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&OpenAngleN[0], "OPEN_ANGLE", "Open Angle", "%0.2f", 0, 300, 1, 0);
-    IUFillNumber(&ClosedAngleN[0], "CLOSED_ANGLE", "Closed Angle", "%0.2f", 0, 300, 1, 0);
+    IUFillNumber(&OpenAngleN[0], "OPEN_ANGLE", "Open Angle", "%d", 0, 300, 1, 0);
+    IUFillNumber(&ClosedAngleN[0], "CLOSED_ANGLE", "Closed Angle", "%d", 0, 300, 1, 0);
     // Create a new number vector property for Main tab
     IUFillNumberVector(&AnglesNP, OpenAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
     IUFillNumberVector(&AnglesNP, ClosedAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
@@ -50,7 +50,7 @@ bool FlatCap::initProperties()
 
     LightIntensityN[0].min  = 0;
     LightIntensityN[0].max  = 255;
-    LightIntensityN[0].step = 10;
+    LightIntensityN[0].step = 1;
 
     // if using just lightbox, remove DUSTCAP_INTERFACE
     setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
