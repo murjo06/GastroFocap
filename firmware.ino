@@ -26,8 +26,9 @@ Recieve  : *D19000\n    //confirms light turned off.
 #define SHUTTER_OPEN = 30		//degrees for servo motor
 #define SHUTTER_CLOSED = 300
 
-#define SHUTTER_ADDRESS = 0;
-#define BRIGHTNESS_ADDRESS = 1;
+#define MOTOR_ADDRESS = 0;
+#define COVER_ADDRESS = 1;
+#define BRIGHTNESS_ADDRESS = 2;
 
 int ledPin = 5;
 int brightness = 0;
@@ -104,7 +105,7 @@ void handleSerial() {
         	This command is only supported on the Flip-Flat!
     	    */
             case 'O': {
-				EEPROM.write(SHUTTER_ADDRESS, OPEN);
+				EEPROM.write(COVER_ADDRESS, OPEN);
         	    sprintf(temp, "*O%d000", deviceId);
         	    setShutter(OPEN);
         	    Serial.println(temp);
@@ -118,7 +119,7 @@ void handleSerial() {
         	This command is only supported on the Flip-Flat!
     	    */
             case 'C': {
-				EEPROM.write(SHUTTER_ADDRESS, CLOSED);
+				EEPROM.update(COVER_ADDRESS, CLOSED);
         	    sprintf(temp, "*C%d000", deviceId);
         	    setShutter(CLOSED);
         	    Serial.println(temp);
@@ -160,7 +161,7 @@ void handleSerial() {
     	    */
             case 'B': {
         	    brightness = atoi(data);
-				EEPROM.write(BRIGHTNESS_ADDRESS, brightness);
+				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
         	    if(lightStatus == ON) {
         	    	analogWrite(ledPin, brightness);
                 }
@@ -176,9 +177,7 @@ void handleSerial() {
         	yyy = current brightness value from 000-255
     	    */
             case 'J': {
-				if(EEPROM.read(BRIGHTNESS_ADDRESS) != brightness) {
-					EEPROM.write(BRIGHTNESS_ADDRESS, brightness);
-				}
+				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
                 sprintf(temp, "*J%d%03d", deviceId, brightness);
                 Serial.println(temp);
                 break;
@@ -219,7 +218,7 @@ void setShutter(int shutter) {
 	if(shutter != OPEN || shutter != CLOSED) {
 		return;
 	}
-	EEPROM.write(SHUTTER_ADDRESS, shutter);
+	EEPROM.update(COVER_ADDRESS, shutter);
 	if(shutter == OPEN && coverStatus != OPEN) {
 		coverStatus = OPEN;
 		servo.write(SHUTTER_OPEN);
