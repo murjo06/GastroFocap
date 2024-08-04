@@ -22,7 +22,6 @@ Recieve  : *Did000\n    //confirms light turned off.
 
 Added open/closed cover angle commands:
 
-
 Send     : >Zxxx\n		//set closed angle to xxx
 Recieve	 : *Zidxxx\n	//confirming angle set to xxx
 
