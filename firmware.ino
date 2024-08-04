@@ -1,7 +1,7 @@
 /*
 Arduino Nano firmware using Alnitak protocol
 
-Code Adapter from https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDLightBoxAlnitak.ino
+Code adapted from https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDLightBoxAlnitak.ino
 
 
 Send     : >S000\n      //request state
@@ -25,10 +25,6 @@ Recieve  : *D19000\n    //confirms light turned off.
 
 #define SHUTTER_OPEN = 30		//degrees for servo motor
 #define SHUTTER_CLOSED = 300
-
-#define COVER_ADDRESS = 0;
-#define LIGHT_ADDRESS = 1;
-#define BRIGHTNESS_ADDRESS = 2;
 
 #define MIN_SERVO_DELAY 50;
 
@@ -57,6 +53,12 @@ enum shutterStatuses {
 	UNKNOWN = 0,
 	CLOSED,
 	OPEN
+};
+
+enum addresses {
+	COVER_ADDRESS = 0,
+	LIGHT_ADDRESS,
+	BRIGHTNESS_ADDRESS
 };
 
 int deviceId = FLIP_FLAT;
