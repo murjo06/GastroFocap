@@ -38,6 +38,8 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         // From Dust Cap
         virtual IPState ParkCap() override;
         virtual IPState UnParkCap() override;
+        virtual bool SetClosedAngle(int16_t angle) override;
+        virtual bool SetOpenAngle(int16_t angle) override;
 
         // From Light Box
         virtual bool SetLightBoxBrightness(uint16_t value) override;
@@ -66,6 +68,10 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         ITextVectorProperty FirmwareTP;
         IText FirmwareT[1] {};
 
+        INumber OpenAngleN[1];
+        INumber ClosedAngleN[1];
+        INumberVectorProperty AnglesNP;
+
         int PortFD{ -1 };
         uint16_t productID{ 0 };
 
@@ -74,6 +80,8 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         uint8_t prevLightStatus{ 0xFF };
         uint8_t prevMotorStatus{ 0xFF };
         uint8_t prevBrightness{ 0xFF };
+        uint16_t prevClosedAngle{ 0xFF };
+        uint16_t prevOpenAngle{ 0xFF };
 
         Connection::Serial *serialConnection{ nullptr };
 };

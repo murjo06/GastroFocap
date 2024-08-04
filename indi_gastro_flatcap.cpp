@@ -37,6 +37,14 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
+    IUFillNumber(&OpenAngleN[0], "OPEN_ANGLE", "Open Angle", "%0.2f", 0, 300, 1, 0);
+    IUFillNumber(&ClosedAngleN[0], "CLOSED_ANGLE", "Closed Angle", "%0.2f", 0, 300, 1, 0);
+    // Create a new number vector property for Main tab
+    IUFillNumberVector(&AnglesNP, OpenAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumberVector(&AnglesNP, ClosedAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
+
+    addNumber(&AnglesNP);
+
     initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
     initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
 
@@ -65,6 +73,7 @@ void FlatCap::ISGetProperties(const char *dev)
 
     // Get Light box properties
     isGetLightBoxProperties(dev);
+    defineNumber(&AnglesNP);
 }
 
 bool FlatCap::updateProperties()
@@ -78,6 +87,7 @@ bool FlatCap::updateProperties()
         defineProperty(&LightIntensityNP);
         defineProperty(&StatusTP);
         defineProperty(&FirmwareTP);
+        defineNumber(&AnglesNP);
 
         updateLightBoxProperties();
 
@@ -90,6 +100,7 @@ bool FlatCap::updateProperties()
         deleteProperty(LightIntensityNP.name);
         deleteProperty(StatusTP.name);
         deleteProperty(FirmwareTP.name);
+        deleteProperty(AnglesNP.name);
 
         updateLightBoxProperties();
     }
@@ -282,6 +293,80 @@ IPState FlatCap::UnParkCap()
     }
     else
         return IPS_ALERT;
+}
+bool FlatCap::SetClosedAngle(uint16_t value) {
+    if (isSimulation())
+    {
+        ClosedAngleN[0].value = value;
+        IDSetNumber(&AnglesNP, nullptr);
+        return true;
+    }
+
+    char command[FLAT_CMD] = {0};
+    char response[FLAT_RES] = {0};
+
+    snprintf(command, FLAT_CMD, ">Z%03d", value);
+
+    if (!sendCommand(command, response))
+        return false;
+
+    char angleString[4] = { 0 };
+    snprintf(angleString, 4, "%s", response + 4);
+
+    int angleValue = 0;
+    int rc = sscanf(angleValue, "%d", &angleValue);
+
+    if (rc <= 0)
+    {
+        LOGF_ERROR("Unable to parse closed angle value (%s)", response);
+        return false;
+    }
+
+    if (angleValue != prevClosedAngle)
+    {
+        prevClosedAngle           = angleValue;
+        ClosedAngleN[0].value = angleValue;
+        IDSetNumber(&AnglesNP, nullptr);
+    }
+
+    return true;
+}
+bool FlatCap::SetOpenAngle(uint16_t value) {
+    if (isSimulation())
+    {
+        OpenAngleN[0].value = value;
+        IDSetNumber(&AnglesNP, nullptr);
+        return true;
+    }
+
+    char command[FLAT_CMD] = {0};
+    char response[FLAT_RES] = {0};
+
+    snprintf(command, FLAT_CMD, ">A%03d", value);
+
+    if (!sendCommand(command, response))
+        return false;
+
+    char angleString[4] = { 0 };
+    snprintf(angleString, 4, "%s", response + 4);
+
+    int angleValue = 0;
+    int rc = sscanf(angleValue, "%d", &angleValue);
+
+    if (rc <= 0)
+    {
+        LOGF_ERROR("Unable to parse open angle value (%s)", response);
+        return false;
+    }
+
+    if (angleValue != prevOpenAngle)
+    {
+        prevOpenAngle           = angleValue;
+        OpenAngleN[0].value = angleValue;
+        IDSetNumber(&AnglesNP, nullptr);
+    }
+
+    return true;
 }
 
 bool FlatCap::EnableLightBox(bool enable)

@@ -5,19 +5,29 @@ Code adapted from https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDL
 
 
 Send     : >S000\n      //request state
-Recieve  : *S19000\n    //returned state
+Recieve  : *Sid000\n    //returned state
 
-Send     : >B128\n      //set brightness 128
-Recieve  : *B19128\n    //confirming brightness set to 128
+Send     : >Bxxx\n      //set brightness to xxx
+Recieve  : *Bidxxx\n    //confirming brightness set to xxx
 
 Send     : >J000\n      //get brightness
-Recieve  : *B19128\n    //brightness value of 128 (assuming as set from above)
+Recieve  : *Bidxxx\n    //brightness value of xxx (assuming as set from above)
 
 Send     : >L000\n      //turn light on (uses set brightness value)
-Recieve  : *L19000\n    //confirms light turned on
+Recieve  : *Lid000\n    //confirms light turned on
 
 Send     : >D000\n      //turn light off (brightness value should not be changed)
-Recieve  : *D19000\n    //confirms light turned off.
+Recieve  : *Did000\n    //confirms light turned off.
+
+
+Added open/closed cover angle commands:
+
+
+Send     : >Zxxx\n		//set closed angle to xxx
+Recieve	 : *Zidxxx\n	//confirming angle set to xxx
+
+Send     : >Axxx\n		//set open angle to xxx
+Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 */
 
 #include <Servo.h>
@@ -26,18 +36,11 @@ Recieve  : *D19000\n    //confirms light turned off.
 #define SHUTTER_OPEN = 30		//degrees for servo motor
 #define SHUTTER_CLOSED = 300
 
-#define MIN_SERVO_DELAY 50;
+#define MIN_SERVO_DELAY 500;
 
 int ledPin = 5;
 int brightness = 0;
 Servo servo;
-
-enum devices {
-	FLAT_MAN_L = 10,
-	FLAT_MAN_XL = 15,
-	FLAT_MAN = 19,
-	FLIP_FLAT = 99
-};
 
 enum motorStatuses {
 	STOPPED = 0,
@@ -58,13 +61,17 @@ enum shutterStatuses {
 enum addresses {
 	COVER_ADDRESS = 0,
 	LIGHT_ADDRESS,
-	BRIGHTNESS_ADDRESS
+	BRIGHTNESS_ADDRESS,
+	CLOSED_ANGLE_ADDRESS,
+	OPEN_ANGLE_ADDRESS
 };
 
-int deviceId = FLIP_FLAT;
+int deviceId = 99;			//id for gastro flatcap
 int motorStatus = STOPPED;
 int lightStatus = EEPROM.read(LIGHT_ADDRESS);
 int coverStatus = EEPROM.read(COVER_ADDRESS);
+int closedAngle = EEPROM.read(CLOSED_ANGLE_ADDRESS);
+int openAngle = EEPROM.read(OPEN_ANGLE_ADDRESS);
 
 void setup() {
 	servo.attach(9);
@@ -75,6 +82,13 @@ void setup() {
 
 void loop() {
     handleSerial();
+}
+
+void moveServo(int angle) {
+	servo.write(angle);
+	motorStatus = RUNNING;
+	delay(MIN_SERVO_DElAY);
+	motorStatus = STOPPED;
 }
 
 void handleSerial() {
@@ -93,8 +107,7 @@ void handleSerial() {
     	    /*
     	    Ping device
     	    Request: >P000\n
-    	    Return : *Pii000\n
-    	    id = deviceId
+    	    Return : *Pid000\n
     	    */
             case 'P': {
     	        sprintf(temp, "*P%d000", deviceId);
@@ -104,9 +117,7 @@ void handleSerial() {
             /*
         	Open shutter
         	Request: >O000\n
-        	Return : *Oii000\n
-        	id = deviceId
-        	This command is only supported on the Flip-Flat!
+        	Return : *Oid000\n
     	    */
             case 'O': {
 				EEPROM.write(COVER_ADDRESS, OPEN);
@@ -118,9 +129,7 @@ void handleSerial() {
             /*
         	Close shutter
         	Request: >C000\n
-        	Return : *Cii000\n
-        	id = deviceId
-        	This command is only supported on the Flip-Flat!
+        	Return : *Cid000\n
     	    */
             case 'C': {
 				EEPROM.update(COVER_ADDRESS, CLOSED);
@@ -132,8 +141,7 @@ void handleSerial() {
     	    /*
         	Turn light on
         	Request: >L000\n
-        	Return : *Lii000\n
-        	id = deviceId
+        	Return : *Lid000\n
     	    */
             case 'L': {
         	    sprintf(temp, "*L%d000", deviceId);
@@ -145,8 +153,7 @@ void handleSerial() {
     	    /*
         	Turn light off
         	Request: >D000\n
-        	Return : *Dii000\n
-        	id = deviceId
+        	Return : *Did000\n
     	    */
             case 'D': {
         	    sprintf(temp, "*D%d000", deviceId);
@@ -159,8 +166,7 @@ void handleSerial() {
         	Set brightness
         	Request: >Bxxx\n
         	xxx = brightness value from 000-255
-        	Return : *Biiyyy\n
-        	id = deviceId
+        	Return : *Bidyyy\n
         	yyy = value that brightness was set from 000-255
     	    */
             case 'B': {
@@ -173,11 +179,44 @@ void handleSerial() {
         	    Serial.println(temp);
                 break;
             }
+			/*
+        	Set shutter closed angle
+        	Request: >Zxxx\n
+        	xxx = angle from 000-300
+        	Return : *Zidyyy\n
+        	yyy = value that closed angle was set from 000-300
+    	    */
+            case 'Z': {
+        	    closedAngle = atoi(data);
+				EEPROM.update(CLOSED_ANGLE_ADDRESS, closedAngle);
+        	    if(coverStatus == CLOSED) {
+					moveServo(closedAngle);
+                }
+        	    sprintf(temp, "*B%d%03d", deviceId, closedAngle);
+        	    Serial.println(temp);
+                break;
+            }
+			/*
+        	Set shutter open angle
+        	Request: >Axxx\n
+        	xxx = angle from 000-300
+        	Return : *Zidyyy\n
+        	yyy = value that closed angle was set from 000-300
+    	    */
+            case 'A': {
+        	    openAngle = atoi(data);
+				EEPROM.update(OPEN_ANGLE_ADDRESS, openAngle);
+        	    if(coverStatus == OPEN) {
+					moveServo(openAngle);
+                }
+        	    sprintf(temp, "*B%d%03d", deviceId, openAngle);
+        	    Serial.println(temp);
+                break;
+            }
     	    /*
         	Get brightness
         	Request: >J000\n
-        	Return : *Jiiyyy\n
-        	id = deviceId
+        	Return : *Jidyyy\n
         	yyy = current brightness value from 000-255
     	    */
             case 'J': {
@@ -190,7 +229,6 @@ void handleSerial() {
         	Get device status:
         	Request: >S000\n
         	Return : *SidMLC\n
-        	id = deviceId
         	M  = motor status (0 stopped, 1 running)
         	L  = light status (0 off, 1 on)
         	C  = cover status (0 moving, 1 closed, 2 open)
@@ -203,8 +241,7 @@ void handleSerial() {
     	    /*
         	Get firmware version
         	Request: >V000\n
-        	Return : *Vii001\n
-        	id = deviceId
+        	Return : *Vid001\n
     	    */
             case 'V': {
                 sprintf(temp, "*V%d001", deviceId);
@@ -225,21 +262,12 @@ void setShutter(int shutter) {
 	EEPROM.update(COVER_ADDRESS, shutter);
 	if(shutter == OPEN && coverStatus != OPEN) {
 		coverStatus = OPEN;
-		servo.write(SHUTTER_OPEN);
-		motorStatus = RUNNING;
-		delay(MIN_SERVO_DElAY);
-		motorStatus = STOPPED;
+		moveServo(SHUTTER_OPEN);
 	} else if(shutter == CLOSED && coverStatus != CLOSED) {
 		coverStatus = CLOSED;
-		servo.write(SHUTTER_CLOSED);
-		motorStatus = RUNNING;
-		delay(MIN_SERVO_DElAY);
-		motorStatus = STOPPED;
+		moveServo(SHUTTER_CLOSED);
 	} else {
 		coverStatus = shutter;
-		servo.write(shutter == OPEN ? SHUTTER_OPEN : SHUTTER_CLOSED);
-		motorStatus = RUNNING;
-		delay(MIN_SERVO_DElAY);
-		motorStatus = STOPPED;
+		moveServo(shutter == OPEN ? SHUTTER_OPEN : SHUTTER_CLOSED);
 	}
 }
