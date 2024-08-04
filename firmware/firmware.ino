@@ -56,17 +56,15 @@ enum shutterStatuses {
 };
 
 enum addresses {
-	COVER_ADDRESS = 0,
-	LIGHT_ADDRESS,
-	BRIGHTNESS_ADDRESS,
+	BRIGHTNESS_ADDRESS = 0,
 	CLOSED_ANGLE_ADDRESS,
 	OPEN_ANGLE_ADDRESS
 };
 
 int deviceId = 99;			//id for gastro flatcap
 int motorStatus = STOPPED;
-int lightStatus = EEPROM.read(LIGHT_ADDRESS);
-int coverStatus = EEPROM.read(COVER_ADDRESS);
+int lightStatus = OFF;
+int coverStatus = CLOSED;
 int closedAngle = EEPROM.read(CLOSED_ANGLE_ADDRESS);
 int openAngle = EEPROM.read(OPEN_ANGLE_ADDRESS);
 
