@@ -14,7 +14,7 @@ find_package(ZLIB REQUIRED)
 find_package(GSL REQUIRED)
 
 # these will be used to set the version number in config.h and our driver's xml file
-set(CDRIVER_VERSION_MAJOR 0)
+set(CDRIVER_VERSION_MAJOR 1)
 set(CDRIVER_VERSION_MINOR 1)
 
 # do the replacement in the config.h
