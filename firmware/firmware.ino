@@ -60,7 +60,7 @@ enum addresses {
 	OPEN_ANGLE_ADDRESS
 };
 
-int deviceId = 99;			//id for gastro flatcap
+int deviceId = 99;			// id for gastro flatcap
 int motorStatus = STOPPED;
 int lightStatus = OFF;
 int coverStatus = CLOSED;
