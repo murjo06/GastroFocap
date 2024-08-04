@@ -37,8 +37,8 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&OpenAngleN[0], "OPEN_ANGLE", "Open Angle", "%d", 0, 300, 1, 0);
-    IUFillNumber(&ClosedAngleN[0], "CLOSED_ANGLE", "Closed Angle", "%d", 0, 300, 1, 0);
+    IUFillNumber(&OpenAngleN[0], "OPEN_ANGLE", "Shutter Open Angle", "%d", 0, 300, 1, 0);
+    IUFillNumber(&ClosedAngleN[0], "CLOSED_ANGLE", "Shutter Closed Angle", "%d", 0, 300, 1, 0);
     // Create a new number vector property for Main tab
     IUFillNumberVector(&AnglesNP, OpenAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
     IUFillNumberVector(&AnglesNP, ClosedAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
@@ -324,7 +324,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
 
     if (angleValue != prevClosedAngle)
     {
-        prevClosedAngle           = angleValue;
+        prevClosedAngle = angleValue;
         ClosedAngleN[0].value = angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
@@ -361,7 +361,7 @@ bool FlatCap::SetOpenAngle(uint16_t value) {
 
     if (angleValue != prevOpenAngle)
     {
-        prevOpenAngle           = angleValue;
+        prevOpenAngle = angleValue;
         OpenAngleN[0].value = angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
@@ -397,8 +397,6 @@ bool FlatCap::EnableLightBox(bool enable)
     else
         snprintf(expectedResponse, FLAT_RES, "*D%02d", productID);
 
-    // JM 2022.11.06 find if the response contains expected response.
-    // We no longer check for zero-fillers since some implementations wrong interpreted as 0.
     return (strstr(response, expectedResponse));
 }
 
@@ -595,7 +593,7 @@ bool FlatCap::getBrightness()
     snprintf(brightnessString, 4, "%s", response + 4);
 
     int brightnessValue = 0;
-    int rc              = sscanf(brightnessString, "%d", &brightnessValue);
+    int rc = sscanf(brightnessString, "%d", &brightnessValue);
 
     if (rc <= 0)
     {
@@ -605,7 +603,7 @@ bool FlatCap::getBrightness()
 
     if (brightnessValue != prevBrightness)
     {
-        prevBrightness           = brightnessValue;
+        prevBrightness = brightnessValue;
         LightIntensityN[0].value = brightnessValue;
         IDSetNumber(&LightIntensityNP, nullptr);
     }
@@ -644,7 +642,7 @@ bool FlatCap::SetLightBoxBrightness(uint16_t value)
 
     if (brightnessValue != prevBrightness)
     {
-        prevBrightness           = brightnessValue;
+        prevBrightness = brightnessValue;
         LightIntensityN[0].value = brightnessValue;
         IDSetNumber(&LightIntensityNP, nullptr);
     }
