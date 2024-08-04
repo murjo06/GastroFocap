@@ -1,4 +1,4 @@
-# Gastro Flatcap firmware for Arduino Nano for use with Alnitak flip-flat driver
+# Gastro Flatcap INDI driver with Arduino Nano firmware
 
 ### Installing the INDI driver
 ```sh
