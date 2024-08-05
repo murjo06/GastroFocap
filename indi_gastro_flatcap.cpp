@@ -234,8 +234,10 @@ bool FlatCap::getStartupData()
     bool rc1 = getFirmwareVersion();
     bool rc2 = getStatus();
     bool rc3 = getBrightness();
+    bool rc4 = getClosedAngle();
+    bool rc5 = getOpenAngle();
 
-    return (rc1 && rc2 && rc3);
+    return (rc1 && rc2 && rc3 && rc4 && rc5);
 }
 
 IPState FlatCap::ParkCap()
@@ -352,6 +354,70 @@ bool FlatCap::SetOpenAngle(uint16_t value) {
 
     int angleValue = 0;
     int rc = sscanf(angleValue, "%d", &angleValue);
+
+    if (rc <= 0)
+    {
+        LOGF_ERROR("Unable to parse open angle value (%s)", response);
+        return false;
+    }
+
+    if (angleValue != prevOpenAngle)
+    {
+        prevOpenAngle = angleValue;
+        OpenAngleN[0].value = angleValue;
+        IDSetNumber(&AnglesNP, nullptr);
+    }
+
+    return true;
+}
+bool FlatCap::getClosedAngle()
+{
+    if (isSimulation())
+    {
+        return true;
+    }
+
+    char response[FLAT_RES] = {0};
+    if (!sendCommand(">K000", response))
+        return false;
+
+    char angleString[4] = { 0 };
+    snprintf(angleString, 4, "%s", response + 4);
+
+    int angleValue = 0;
+    int rc = sscanf(angleString, "%d", &angleValue);
+
+    if (rc <= 0)
+    {
+        LOGF_ERROR("Unable to parse closed angle value (%s)", response);
+        return false;
+    }
+
+    if (angleValue != prevClosedAngle)
+    {
+        prevClosedAngle = angleValue;
+        ClosedAngleN[0].value = angleValue;
+        IDSetNumber(&AnglesNP, nullptr);
+    }
+
+    return true;
+}
+bool FlatCap::getOpenAngle()
+{
+    if (isSimulation())
+    {
+        return true;
+    }
+
+    char response[FLAT_RES] = {0};
+    if (!sendCommand(">H000", response))
+        return false;
+
+    char angleString[4] = { 0 };
+    snprintf(angleString, 4, "%s", response + 4);
+
+    int angleValue = 0;
+    int rc = sscanf(angleString, "%d", &angleValue);
 
     if (rc <= 0)
     {
@@ -611,7 +677,7 @@ bool FlatCap::getBrightness()
     return true;
 }
 
-bool FlatCap::SetLightBoxBrightness(uint16_t value)
+bool FlatCap::SetLightBoxBrightness(uint8_t value)
 {
     if (isSimulation())
     {
