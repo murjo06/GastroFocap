@@ -32,9 +32,9 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define MIN_SERVO_DELAY 200;
-#define SERVO_SPEED 0.5;			// in degrees per ms
-#define SERVO_DELAY_OFFSET 100;		// delay added to delay() in ms
+#define MIN_SERVO_DELAY 200
+#define SERVO_SPEED 0.5			// in degrees per ms
+#define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
 int ledPin = 5;
 Servo servo;
@@ -90,7 +90,7 @@ void loop() {
 void moveServo(int angle) {
 	servo.write(angle);
 	motorStatus = RUNNING;
-	delay(max(MIN_SERVO_DElAY, SERVO_DELAY_OFFSET + round(abs(servo.read() - angle) / SERVO_SPEED)));
+	delay(max(MIN_SERVO_DELAY, SERVO_DELAY_OFFSET + round(abs(servo.read() - angle) / SERVO_SPEED)));
 	motorStatus = STOPPED;
 }
 
@@ -98,10 +98,10 @@ void updateInt16EEPROM(int address, uint16_t value) {
 	EEPROM.update(address, value);
 	EEPROM.update(address, value >> 8);
 }
-uint16_t readInt16EEPROM(int address){
+uint16_t readInt16EEPROM(int address) {
 	int value;
-	value = (EEPROM.read(location + 1) << 8);
-	value |= EEPROM.read(location);
+	value = (EEPROM.read(address + 1) << 8);
+	value |= EEPROM.read(address);
 	return value;
 }
 
@@ -297,12 +297,12 @@ void setShutter(int shutter) {
 	}
 	if(shutter == OPEN && coverStatus != OPEN) {
 		coverStatus = OPEN;
-		moveServo(SHUTTER_OPEN);
+		moveServo(openAngle);
 	} else if(shutter == CLOSED && coverStatus != CLOSED) {
 		coverStatus = CLOSED;
-		moveServo(SHUTTER_CLOSED);
+		moveServo(closedAngle);
 	} else {
 		coverStatus = shutter;
-		moveServo(shutter == OPEN ? SHUTTER_OPEN : SHUTTER_CLOSED);
+		moveServo((shutter == OPEN) ? openAngle : closedAngle);
 	}
 }
