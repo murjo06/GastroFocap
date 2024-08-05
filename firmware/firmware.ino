@@ -33,6 +33,8 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #include <EEPROM.h>
 
 #define MIN_SERVO_DELAY 200;
+#define SERVO_SPEED 0.5;			// in degrees per ms
+#define SERVO_DELAY_OFFSET 100;		// delay added to delay() in ms
 
 int ledPin = 5;
 int brightness = 0;
@@ -81,7 +83,7 @@ void loop() {
 void moveServo(int angle) {
 	servo.write(angle);
 	motorStatus = RUNNING;
-	delay(MIN_SERVO_DElAY);
+	delay(max(MIN_SERVO_DElAY, SERVO_DELAY_OFFSET + round(abs(servo.read() - angle) / SERVO_SPEED)));
 	motorStatus = STOPPED;
 }
 
