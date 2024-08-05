@@ -40,17 +40,17 @@ int ledPin = 5;
 Servo servo;
 
 enum motorStatuses {
-	STOPPED = 0,
+	STOPPED,
 	RUNNING
 };
 
 enum lightStatuses {
-	OFF = 0,
+	OFF,
 	ON
 };
 
 enum shutterStatuses {
-	UNKNOWN = 0,
+	UNKNOWN,
 	CLOSED,
 	OPEN
 };
