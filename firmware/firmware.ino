@@ -37,7 +37,6 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #define SERVO_DELAY_OFFSET 100;		// delay added to delay() in ms
 
 int ledPin = 5;
-int brightness = 0;
 Servo servo;
 
 enum motorStatuses {
@@ -56,18 +55,35 @@ enum shutterStatuses {
 	OPEN
 };
 
+/*
+! IMPORTANT:
+Both CLOSED_ANGLE_ADDRESS and OPEN_ANGLE_ADDRESS store 16 bit integers (255 just isn't enough for the positions).
+That means they use two EEPROM slots each
+*/
 enum addresses {
 	BRIGHTNESS_ADDRESS = 0,
-	CLOSED_ANGLE_ADDRESS,
-	OPEN_ANGLE_ADDRESS
+	CLOSED_ANGLE_ADDRESS = 1,
+	OPEN_ANGLE_ADDRESS = 3
 };
 
-int deviceId = 99;			// id for gastro flatcap
-int motorStatus = STOPPED;
-int lightStatus = OFF;
-int coverStatus = CLOSED;
-int closedAngle = EEPROM.read(CLOSED_ANGLE_ADDRESS);
-int openAngle = EEPROM.read(OPEN_ANGLE_ADDRESS);
+void updateInt16EEPROM(int address, uint16_t value) {
+	EEPROM.update(address, value);
+	EEPROM.update(address, value >> 8);
+}
+uint16_t readInt16EEPROM(int address){
+	int value;
+	value = (EEPROM.read(location + 1) << 8);
+	value |= EEPROM.read(location);
+	return value;
+}
+
+uint8_t deviceId = 99;			// id for gastro flatcap
+uint8_t motorStatus = STOPPED;
+uint8_t lightStatus = OFF;
+uint8_t coverStatus = CLOSED;
+uint8_t brightness = 0;
+uint16_t closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
+uint16_t openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
 
 void setup() {
 	servo.attach(9);
@@ -182,7 +198,7 @@ void handleSerial() {
     	    */
             case 'Z': {
         	    closedAngle = atoi(data);
-				EEPROM.update(CLOSED_ANGLE_ADDRESS, closedAngle);
+				updateInt16EEPROM(CLOSED_ANGLE_ADDRESS, closedAngle);
         	    if(coverStatus == CLOSED) {
 					moveServo(closedAngle);
                 }
@@ -199,7 +215,7 @@ void handleSerial() {
     	    */
             case 'A': {
         	    openAngle = atoi(data);
-				EEPROM.update(OPEN_ANGLE_ADDRESS, openAngle);
+				updateInt16EEPROM(OPEN_ANGLE_ADDRESS, openAngle);
         	    if(coverStatus == OPEN) {
 					moveServo(openAngle);
                 }
