@@ -66,30 +66,21 @@ enum addresses {
 	OPEN_ANGLE_ADDRESS = 3
 };
 
-void updateInt16EEPROM(int address, uint16_t value) {
-	EEPROM.update(address, value);
-	EEPROM.update(address, value >> 8);
-}
-uint16_t readInt16EEPROM(int address){
-	int value;
-	value = (EEPROM.read(location + 1) << 8);
-	value |= EEPROM.read(location);
-	return value;
-}
-
 uint8_t deviceId = 99;			// id for gastro flatcap
 uint8_t motorStatus = STOPPED;
 uint8_t lightStatus = OFF;
 uint8_t coverStatus = CLOSED;
 uint8_t brightness = 0;
-uint16_t closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
-uint16_t openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
+uint16_t closedAngle = 0;
+uint16_t openAngle = 0;
 
 void setup() {
 	servo.attach(9);
     Serial.begin(9600);
     pinMode(ledPin, OUTPUT);
     analogWrite(ledPin, 0);
+	uint16_t closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
+	uint16_t openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
 }
 
 void loop() {
@@ -101,6 +92,17 @@ void moveServo(int angle) {
 	motorStatus = RUNNING;
 	delay(max(MIN_SERVO_DElAY, SERVO_DELAY_OFFSET + round(abs(servo.read() - angle) / SERVO_SPEED)));
 	motorStatus = STOPPED;
+}
+
+void updateInt16EEPROM(int address, uint16_t value) {
+	EEPROM.update(address, value);
+	EEPROM.update(address, value >> 8);
+}
+uint16_t readInt16EEPROM(int address){
+	int value;
+	value = (EEPROM.read(location + 1) << 8);
+	value |= EEPROM.read(location);
+	return value;
 }
 
 void handleSerial() {
@@ -221,6 +223,30 @@ void handleSerial() {
                 }
         	    sprintf(temp, "*B%d%03d", deviceId, openAngle);
         	    Serial.println(temp);
+                break;
+            }
+			/*
+        	Get shutter closed angle
+        	Request: >K000\n
+        	Return : *Kidyyy\n
+        	yyy = current brightness value from 000-255
+    	    */
+            case 'K': {
+				EEPROM.update(CLOSED_ANGLE_ADDRESS, closedAngle);
+                sprintf(temp, "*K%d%03d", deviceId, closedAngle);
+                Serial.println(temp);
+                break;
+            }
+			/*
+        	Get shutter open angle
+        	Request: >H000\n
+        	Return : *Hidyyy\n
+        	yyy = current brightness value from 000-255
+    	    */
+            case 'H': {
+				EEPROM.update(OPEN_ANGLE_ADDRESS, openAngle);
+                sprintf(temp, "*H%d%03d", deviceId, openAngle);
+                Serial.println(temp);
                 break;
             }
     	    /*
