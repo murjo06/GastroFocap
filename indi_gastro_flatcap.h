@@ -82,8 +82,8 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         uint8_t prevLightStatus{ 0xFF };
         uint8_t prevMotorStatus{ 0xFF };
         uint8_t prevBrightness{ 0xFF };
-        uint16_t prevClosedAngle{ 0xFF };
-        uint16_t prevOpenAngle{ 0xFF };
+        uint16_t prevClosedAngle{ 0 };
+        uint16_t prevOpenAngle{ 0 };
 
         Connection::Serial *serialConnection{ nullptr };
 };

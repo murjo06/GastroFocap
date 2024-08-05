@@ -79,8 +79,9 @@ void setup() {
     Serial.begin(9600);
     pinMode(ledPin, OUTPUT);
     analogWrite(ledPin, 0);
-	uint16_t closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
-	uint16_t openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
+	closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
+	openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
+	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
 }
 
 void loop() {
@@ -156,10 +157,10 @@ void handleSerial() {
         	Return : *Lid000\n
     	    */
             case 'L': {
+        	    analogWrite(ledPin, brightness);
+				lightStatus = ON;
         	    sprintf(temp, "*L%d000", deviceId);
         	    Serial.println(temp);
-        	    lightStatus = ON;
-        	    analogWrite(ledPin, brightness);
         	    break;
             }
     	    /*
@@ -168,10 +169,10 @@ void handleSerial() {
         	Return : *Did000\n
     	    */
             case 'D': {
+				analogWrite(ledPin, 0);
+				lightStatus = OFF;
         	    sprintf(temp, "*D%d000", deviceId);
         	    Serial.println(temp);
-        	    lightStatus = OFF;
-        	    analogWrite(ledPin, 0);
         	    break;
             }
     	    /*
