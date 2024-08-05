@@ -33,7 +33,7 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #include <EEPROM.h>
 
 #define MIN_SERVO_DELAY 200
-#define SERVO_SPEED 0.5			// in degrees per ms
+#define SERVO_SPEED 0.5				// in degrees per ms
 #define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
 int ledPin = 5;
@@ -58,7 +58,7 @@ enum shutterStatuses {
 /*
 ! IMPORTANT:
 Both CLOSED_ANGLE_ADDRESS and OPEN_ANGLE_ADDRESS store 16 bit integers (255 just isn't enough for the positions).
-That means they use two EEPROM slots each
+That means they use two EEPROM addresses each (CLOSED_ANGLE uses addresses 1 and 2, for example)
 */
 enum addresses {
 	BRIGHTNESS_ADDRESS = 0,
