@@ -116,7 +116,6 @@ void handleSerial() {
         	Return : *Oid000\n
     	    */
             case 'O': {
-				EEPROM.write(COVER_ADDRESS, OPEN);
         	    sprintf(temp, "*O%d000", deviceId);
         	    setShutter(OPEN);
         	    Serial.println(temp);
@@ -128,7 +127,6 @@ void handleSerial() {
         	Return : *Cid000\n
     	    */
             case 'C': {
-				EEPROM.update(COVER_ADDRESS, CLOSED);
         	    sprintf(temp, "*C%d000", deviceId);
         	    setShutter(CLOSED);
         	    Serial.println(temp);
@@ -255,7 +253,6 @@ void setShutter(int shutter) {
 	if(shutter != OPEN || shutter != CLOSED) {
 		return;
 	}
-	EEPROM.update(COVER_ADDRESS, shutter);
 	if(shutter == OPEN && coverStatus != OPEN) {
 		coverStatus = OPEN;
 		moveServo(SHUTTER_OPEN);
