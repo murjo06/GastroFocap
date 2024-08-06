@@ -36,7 +36,7 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #define SERVO_SPEED 0.5				// in degrees per ms
 #define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
-int ledPin = 5;
+#define LED_PIN 5;
 Servo servo;
 
 enum motorStatuses {
@@ -77,8 +77,8 @@ uint16_t openAngle = 0;
 void setup() {
 	servo.attach(9);
     Serial.begin(9600);
-    pinMode(ledPin, OUTPUT);
-    analogWrite(ledPin, 0);
+    pinMode(LED_PIN, OUTPUT);
+    analogWrite(LED_PIN, 0);
 	closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
 	openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
@@ -100,10 +100,7 @@ void updateInt16EEPROM(int address, uint16_t value) {
 	EEPROM.update(address, value >> 8);
 }
 uint16_t readInt16EEPROM(int address) {
-	int value;
-	value = (EEPROM.read(address + 1) << 8);
-	value |= EEPROM.read(address);
-	return value;
+	return (EEPROM.read(address + 1) << 8) | EEPROM.read(address);
 }
 
 void handleSerial() {
@@ -157,7 +154,7 @@ void handleSerial() {
         	Return : *Lid000\n
     	    */
             case 'L': {
-        	    analogWrite(ledPin, brightness);
+        	    analogWrite(LED_PIN, brightness);
 				lightStatus = ON;
         	    sprintf(temp, "*L%d000", deviceId);
         	    Serial.println(temp);
@@ -169,7 +166,7 @@ void handleSerial() {
         	Return : *Did000\n
     	    */
             case 'D': {
-				analogWrite(ledPin, 0);
+				analogWrite(LED_PIN, 0);
 				lightStatus = OFF;
         	    sprintf(temp, "*D%d000", deviceId);
         	    Serial.println(temp);
@@ -186,7 +183,7 @@ void handleSerial() {
         	    brightness = atoi(data);
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
         	    if(lightStatus == ON) {
-        	    	analogWrite(ledPin, brightness);
+        	    	analogWrite(LED_PIN, brightness);
                 }
         	    sprintf(temp, "*B%d%03d", deviceId, brightness);
         	    Serial.println(temp);
