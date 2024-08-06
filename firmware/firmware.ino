@@ -97,7 +97,7 @@ void moveServo(int angle) {
 
 void updateInt16EEPROM(int address, uint16_t value) {
 	EEPROM.update(address, value);
-	EEPROM.update(address, value >> 8);
+	EEPROM.update(address + 1, value >> 8);
 }
 uint16_t readInt16EEPROM(int address) {
 	return (EEPROM.read(address + 1) << 8) | EEPROM.read(address);
