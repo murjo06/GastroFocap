@@ -154,8 +154,10 @@ void handleSerial() {
         	Return : *Lid000\n
     	    */
             case 'L': {
-        	    analogWrite(LED_PIN, brightness);
-				lightStatus = ON;
+				if(coverStatus == CLOSED) {
+        	    	analogWrite(LED_PIN, brightness);
+					lightStatus = ON;
+				}
         	    sprintf(temp, "*L%d000", deviceId);
         	    Serial.println(temp);
         	    break;
@@ -182,7 +184,7 @@ void handleSerial() {
             case 'B': {
         	    brightness = atoi(data);
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
-        	    if(lightStatus == ON) {
+        	    if(lightStatus == ON && coverStatus == CLOSED) {
         	    	analogWrite(LED_PIN, brightness);
                 }
         	    sprintf(temp, "*B%d%03d", deviceId, brightness);
