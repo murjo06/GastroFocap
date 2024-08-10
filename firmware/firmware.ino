@@ -179,10 +179,13 @@ void handleSerial() {
         	Request: >Bxxx\n
         	xxx = brightness value from 000-255
         	Return : *Bidyyy\n
-        	yyy = value that brightness was set from 000-255
+        	yyy = value that brightness was set from 001-255
     	    */
             case 'B': {
         	    brightness = atoi(data);
+				if(brightness == 0) {
+					break;
+				}
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
         	    if(lightStatus == ON && coverStatus == CLOSED) {
         	    	analogWrite(LED_PIN, brightness);
