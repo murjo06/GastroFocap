@@ -48,15 +48,15 @@ bool FlatCap::initProperties()
 
     LightIntensityN[0].min = 1;
     LightIntensityN[0].max = 255;
-    LightIntensityN[0].step = 10;
+    LightIntensityN[0].step = 1;
 
     ClosedAngleN[0].min = 0;
     ClosedAngleN[0].max = 300;
-    ClosedAngleN[0].step = 10;
+    ClosedAngleN[0].step = 1;
 
     OpenAngleN[0].min = 0;
     OpenAngleN[0].max = 300;
-    OpenAngleN[0].step = 10;
+    OpenAngleN[0].step = 1;
 
     // if using just lightbox, remove DUSTCAP_INTERFACE
     setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
