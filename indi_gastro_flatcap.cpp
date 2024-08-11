@@ -305,7 +305,7 @@ IPState FlatCap::UnParkCap()
 bool FlatCap::SetClosedAngle(uint16_t value) {
     if (isSimulation())
     {
-        ClosedAngleN[0].value = value;
+        AnglesN[1].value = value;
         IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
@@ -333,7 +333,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
     if (angleValue != prevClosedAngle)
     {
         prevClosedAngle = angleValue;
-        ClosedAngleN[0].value = angleValue;
+        AnglesN[1].value = angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
 
@@ -342,7 +342,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
 bool FlatCap::SetOpenAngle(uint16_t value) {
     if (isSimulation())
     {
-        OpenAngleN[0].value = value;
+        AnglesN[0].value = value;
         IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
@@ -370,7 +370,7 @@ bool FlatCap::SetOpenAngle(uint16_t value) {
     if (angleValue != prevOpenAngle)
     {
         prevOpenAngle = angleValue;
-        OpenAngleN[0].value = angleValue;
+        AnglesN[0].value = angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
 
@@ -402,7 +402,7 @@ bool FlatCap::getClosedAngle()
     if (angleValue != prevClosedAngle)
     {
         prevClosedAngle = angleValue;
-        ClosedAngleN[0].value = angleValue;
+        AnglesN[1].value = angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
 
@@ -434,7 +434,7 @@ bool FlatCap::getOpenAngle()
     if (angleValue != prevOpenAngle)
     {
         prevOpenAngle = angleValue;
-        OpenAngleN[0].value = angleValue;
+        AnglesN[0].value = angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
 
