@@ -207,7 +207,7 @@ void handleSerial() {
         	    if(coverStatus == CLOSED) {
 					moveServo(closedAngle);
                 }
-        	    sprintf(temp, "*B%d%03d", deviceId, closedAngle);
+        	    sprintf(temp, "*Z%d%03d", deviceId, closedAngle);
         	    Serial.println(temp);
                 break;
             }
@@ -215,8 +215,8 @@ void handleSerial() {
         	Set shutter open angle
         	Request: >Axxx\n
         	xxx = angle from 000-300
-        	Return : *Zidyyy\n
-        	yyy = value that closed angle was set from 000-300
+        	Return : *Aidyyy\n
+        	yyy = value that open angle was set from 000-300
     	    */
             case 'A': {
         	    openAngle = atoi(data);
@@ -224,7 +224,7 @@ void handleSerial() {
         	    if(coverStatus == OPEN) {
 					moveServo(openAngle);
                 }
-        	    sprintf(temp, "*B%d%03d", deviceId, openAngle);
+        	    sprintf(temp, "*A%d%03d", deviceId, openAngle);
         	    Serial.println(temp);
                 break;
             }
@@ -232,7 +232,7 @@ void handleSerial() {
         	Get shutter closed angle
         	Request: >K000\n
         	Return : *Kidyyy\n
-        	yyy = current brightness value from 000-255
+        	yyy = value that closed angle was set from 000-300
     	    */
             case 'K': {
 				EEPROM.update(CLOSED_ANGLE_ADDRESS, closedAngle);
