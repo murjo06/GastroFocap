@@ -43,8 +43,6 @@ bool FlatCap::initProperties()
     IUFillNumberVector(&AnglesNP, OpenAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
     IUFillNumberVector(&AnglesNP, ClosedAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
-    addNumber(&AnglesNP);
-
     initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
     initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
 
@@ -73,7 +71,6 @@ void FlatCap::ISGetProperties(const char *dev)
 
     // Get Light box properties
     isGetLightBoxProperties(dev);
-    defineNumber(&AnglesNP);
 }
 
 bool FlatCap::updateProperties()
@@ -87,7 +84,7 @@ bool FlatCap::updateProperties()
         defineProperty(&LightIntensityNP);
         defineProperty(&StatusTP);
         defineProperty(&FirmwareTP);
-        defineNumber(&AnglesNP);
+        defineProperty(&AnglesNP);
 
         updateLightBoxProperties();
 
@@ -316,7 +313,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
     snprintf(angleString, 4, "%s", response + 4);
 
     int angleValue = 0;
-    int rc = sscanf(angleValue, "%d", &angleValue);
+    int rc = sscanf(angleString, "%d", &angleValue);
 
     if (rc <= 0)
     {
@@ -353,7 +350,7 @@ bool FlatCap::SetOpenAngle(uint16_t value) {
     snprintf(angleString, 4, "%s", response + 4);
 
     int angleValue = 0;
-    int rc = sscanf(angleValue, "%d", &angleValue);
+    int rc = sscanf(angleString, "%d", &angleValue);
 
     if (rc <= 0)
     {
