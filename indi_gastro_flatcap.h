@@ -70,10 +70,8 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         ITextVectorProperty FirmwareTP;
         IText FirmwareT[1] {};
 
-        INumber OpenAngleN[1];
-        INumber ClosedAngleN[1];
-        INumberVectorProperty OpenAngleNP;
-        INumberVectorProperty ClosedAngleNP;
+        INumber AnglesN[2];
+        INumberVectorProperty AnglesNP;
 
         int PortFD{ -1 };
         uint16_t productID{ 0 };

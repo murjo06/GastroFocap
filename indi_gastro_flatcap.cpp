@@ -37,26 +37,17 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&ClosedAngleN[0], "CLOSED_ANGLE", "Value", "%d", 0, 300, 1, 0);
-    IUFillNumber(&OpenAngleN[0], "OPEN_ANGLE", "Value", "%d", 0, 300, 1, 0);
+    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%d", 0, 300, 1, 0);
+    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%d", 0, 300, 1, 0);
     // Create a new number vector property for Main tab
-    IUFillNumberVector(&ClosedAngleNP, ClosedAngleN, 1, getDeviceName(), "CLOSED_ANGLE_NP", "Shutter Closed Angle", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
-    IUFillNumberVector(&OpenAngleNP, OpenAngleN, 1, getDeviceName(), "OPEN_ANGLE_NP", "Shutter Open Angle", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumberVector(&AnglesNP, AnglesN, 1, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
     initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
     initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
 
-    LightIntensityN[0].min = 1;
-    LightIntensityN[0].max = 255;
+    LightIntensityN[0].min  = 1;
+    LightIntensityN[0].max  = 255;
     LightIntensityN[0].step = 1;
-
-    ClosedAngleN[0].min = 0;
-    ClosedAngleN[0].max = 300;
-    ClosedAngleN[0].step = 1;
-
-    OpenAngleN[0].min = 0;
-    OpenAngleN[0].max = 300;
-    OpenAngleN[0].step = 1;
 
     // if using just lightbox, remove DUSTCAP_INTERFACE
     setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
@@ -92,8 +83,7 @@ bool FlatCap::updateProperties()
         defineProperty(&LightIntensityNP);
         defineProperty(&StatusTP);
         defineProperty(&FirmwareTP);
-        defineProperty(&ClosedAngleNP);
-        defineProperty(&OpenAngleNP);
+        defineProperty(&AnglesNP);
 
         updateLightBoxProperties();
 
@@ -106,8 +96,7 @@ bool FlatCap::updateProperties()
         deleteProperty(LightIntensityNP.name);
         deleteProperty(StatusTP.name);
         deleteProperty(FirmwareTP.name);
-        deleteProperty(ClosedAngleNP.name);
-        deleteProperty(OpenAngleNP.name);
+        deleteProperty(AnglesNP.name);
 
         updateLightBoxProperties();
     }
@@ -169,16 +158,12 @@ bool FlatCap::Handshake()
 
 bool FlatCap::ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n)
 {
-    if(strcmp(name, "CLOSED_ANGLE_NP") == 0) {
+    if(strcmp(name, "ANGLES") == 0) {
         for(int i = 0; i < n; i++) {
             if(strcmp(names[i], "CLOSED_ANGLE") == 0) {
                 SetClosedAngle(values[i]);
             }
-        }
-    }
-    if(strcmp(name, "OPEN_ANGLE_NP") == 0) {
-        for(int i = 0; i < n; i++) {
-            if(strcmp(names[i], "OPEN_ANGLE") == 0) {
+            else if(strcmp(names[i], "OPEN_ANGLE") == 0) {
                 SetOpenAngle(values[i]);
             }
         }
@@ -321,7 +306,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
     if (isSimulation())
     {
         ClosedAngleN[0].value = value;
-        IDSetNumber(&ClosedAngleNP, nullptr);
+        IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
 
@@ -349,7 +334,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
     {
         prevClosedAngle = angleValue;
         ClosedAngleN[0].value = angleValue;
-        IDSetNumber(&ClosedAngleNP, nullptr);
+        IDSetNumber(&AnglesNP, nullptr);
     }
 
     return true;
@@ -358,7 +343,7 @@ bool FlatCap::SetOpenAngle(uint16_t value) {
     if (isSimulation())
     {
         OpenAngleN[0].value = value;
-        IDSetNumber(&OpenAngleNP, nullptr);
+        IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
 
@@ -386,7 +371,7 @@ bool FlatCap::SetOpenAngle(uint16_t value) {
     {
         prevOpenAngle = angleValue;
         OpenAngleN[0].value = angleValue;
-        IDSetNumber(&OpenAngleNP, nullptr);
+        IDSetNumber(&AnglesNP, nullptr);
     }
 
     return true;
@@ -418,7 +403,7 @@ bool FlatCap::getClosedAngle()
     {
         prevClosedAngle = angleValue;
         ClosedAngleN[0].value = angleValue;
-        IDSetNumber(&ClosedAngleNP, nullptr);
+        IDSetNumber(&AnglesNP, nullptr);
     }
 
     return true;
@@ -450,7 +435,7 @@ bool FlatCap::getOpenAngle()
     {
         prevOpenAngle = angleValue;
         OpenAngleN[0].value = angleValue;
-        IDSetNumber(&OpenAngleNP, nullptr);
+        IDSetNumber(&AnglesNP, nullptr);
     }
 
     return true;
