@@ -37,11 +37,20 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&OpenAngleN[0], "OPEN_ANGLE", "Shutter Open Angle", "%d", 0, 300, 1, 0);
-    IUFillNumber(&ClosedAngleN[0], "CLOSED_ANGLE", "Shutter Closed Angle", "%d", 0, 300, 1, 0);
-    // Create a new number vector property for Main tab
-    IUFillNumberVector(&AnglesNP, OpenAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
-    IUFillNumberVector(&AnglesNP, ClosedAngleN, 1, getDeviceName(), "ANGLES", "Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumber OpenAngleN = {"OPEN_ANGLE", "Open", "%d", 0, 300, 1, 0};
+    IUFillNumber ClosedAngleN = {"CLOSED_ANGLE", "Closed", "%d", 0, 300, 1, 0};
+
+    IUFillNumber* NumberArray[] = { &OpenAngleN, &ClosedAngleN };
+    IUFillNumberVector AnglesNP = {
+        "ANGLES",
+        "Shutter Angles",
+        nullptr,
+        NumberArray,
+        2,
+        IPS_IDLE,
+        60,
+        MAIN_CONTROL_TAB
+    };
 
     initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
     initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
