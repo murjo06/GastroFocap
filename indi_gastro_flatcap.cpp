@@ -159,6 +159,16 @@ bool FlatCap::Handshake()
 
 bool FlatCap::ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n)
 {
+    if(strcmp(name, "ANGLES") == 0) {
+        for(int i = 0; i < n; i++) {
+            if(strcmp(names[i], "CLOSED_ANGLE") == 0) {
+                SetClosedAngle(values[i]);
+            }
+            else if(strcmp(names[i], "OPEN_ANGLE") == 0) {
+                SetOpenAngle(values[i]);
+            }
+        }
+    }
     if (processLightBoxNumber(dev, name, values, names, n))
         return true;
 
