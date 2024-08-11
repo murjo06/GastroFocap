@@ -40,7 +40,7 @@ bool FlatCap::initProperties()
     IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%d", 0, 300, 1, 0);
     IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%d", 0, 300, 1, 0);
     // Create a new number vector property for Main tab
-    IUFillNumberVector(&AnglesNP, AnglesN, 1, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
     initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
     initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
