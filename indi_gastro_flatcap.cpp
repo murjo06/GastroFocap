@@ -307,10 +307,6 @@ IPState FlatCap::UnParkCap()
         return IPS_ALERT;
 }
 bool FlatCap::SetClosedAngle(uint16_t value) {
-    if((double)value > MAX_ANGLE || (double)value < MIN_ANGLE) {
-        LOGF_INFO("Angle value out of bounds (0 - 300)");
-        return false;
-    }
     if (isSimulation())
     {
         AnglesN[1].value = (double)value;
@@ -348,10 +344,6 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
     return true;
 }
 bool FlatCap::SetOpenAngle(uint16_t value) {
-    if((double)value > MAX_ANGLE || (double)value < MIN_ANGLE) {
-        LOGF_INFO("Angle value out of bounds (0 - 300)");
-        return false;
-    }
     if (isSimulation())
     {
         AnglesN[0].value = (double)value;
