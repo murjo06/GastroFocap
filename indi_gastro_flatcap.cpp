@@ -728,42 +728,34 @@ bool FlatCap::SetLightBoxBrightness(uint8_t value)
 
 bool FlatCap::sendCommand(const char *command, char *response)
 {
-    int nbytes_written = 0, nbytes_read = 0, rc = -1;
+    int nbytes_read = 0, nbytes_written = 0, rc = -1;
+    char buffer[FLAT_CMD + 1] = {0};
     char errstr[MAXRBUF] = {0};
-    int i = 0;
-
     tcflush(PortFD, TCIOFLUSH);
-
-    LOGF_DEBUG("CMD <%s>", command);
-
-    char buffer[FLAT_CMD + 1] = {0}; // space for terminating null
-    snprintf(buffer, FLAT_CMD + 1, "%s\n", command);
-
-    for (i = 0; i < 3; i++)
+    if(isSimulation())
     {
-        if ((rc = tty_write(PortFD, buffer, FLAT_CMD, &nbytes_written)) != TTY_OK)
+        return true;
+    }
+    else
+    {
+        snprintf(buffer, FLAT_CMD + 1, "%s\n", command);
+        if((rc = tty_write(PortFD, buffer, FLAT_CMD, &nbytes_written)) != TTY_OK)
         {
-            usleep(50000);
-            continue;
+            tty_error_msg(rc, errstr, MAXRBUF);
+            LOGF_ERROR("%s write error: %s", command, errstr);
+            return false;
         }
+        if((rc = tty_nread_section(PortFD, response, FLAT_RES + 1, 0xA, FLAT_TIMEOUT, &nbytes_read)) != TTY_OK)
+        {
+            tty_error_msg(rc, errstr, MAXRBUF);
+            LOGF_ERROR("%s read error: %s", command, errstr);
+            return false;
+        }
+        response[nbytes_read - 1] = 0;
 
-        if ((rc = tty_nread_section(PortFD, response, FLAT_RES, 0xA, FLAT_TIMEOUT, &nbytes_read)) != TTY_OK)
-            usleep(50000);
-        else
-            break;
+        return true;
     }
-
-    if (i == 3)
-    {
-        tty_error_msg(rc, errstr, MAXRBUF);
-        LOGF_ERROR("%s error: %s.", command, errstr);
-        return false;
-    }
-
-    response[nbytes_read - 1] = 0; // strip \n
-
-    LOGF_DEBUG("RES <%s>", response);
-    return true;
+    return false;
 }
 
 void FlatCap::parkTimeoutHelper(void *context)
