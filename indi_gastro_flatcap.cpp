@@ -37,8 +37,8 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%d", 0, 300, 1, 0);
-    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%d", 0, 300, 1, 0);
+    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%d", 0.0, 300.0, 1.0, 0.0);
+    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%d", 0.0, 300.0, 1.0, 0.0);
     // Create a new number vector property for Main tab
     IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
@@ -161,12 +161,14 @@ bool FlatCap::ISNewNumber(const char *dev, const char *name, double values[], ch
     if(strcmp(name, "ANGLES") == 0) {
         for(int i = 0; i < n; i++) {
             if(strcmp(names[i], "CLOSED_ANGLE") == 0) {
-                SetClosedAngle(values[i]);
+                SetClosedAngle((uint16_t)round(values[i]));
             }
             else if(strcmp(names[i], "OPEN_ANGLE") == 0) {
-                SetOpenAngle(values[i]);
+                SetOpenAngle((uint16_t)round(values[i]));
             }
         }
+        AnglesNP.apply();
+        return true;
     }
     if (processLightBoxNumber(dev, name, values, names, n))
         return true;
@@ -305,7 +307,7 @@ IPState FlatCap::UnParkCap()
 bool FlatCap::SetClosedAngle(uint16_t value) {
     if (isSimulation())
     {
-        AnglesN[1].value = value;
+        AnglesN[1].value = (double)value;
         IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
@@ -333,7 +335,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
     if (angleValue != prevClosedAngle)
     {
         prevClosedAngle = angleValue;
-        AnglesN[1].value = angleValue;
+        AnglesN[1].value = (double)angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
 
@@ -342,7 +344,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
 bool FlatCap::SetOpenAngle(uint16_t value) {
     if (isSimulation())
     {
-        AnglesN[0].value = value;
+        AnglesN[0].value = (double)value;
         IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
@@ -370,7 +372,7 @@ bool FlatCap::SetOpenAngle(uint16_t value) {
     if (angleValue != prevOpenAngle)
     {
         prevOpenAngle = angleValue;
-        AnglesN[0].value = angleValue;
+        AnglesN[0].value = (double)angleValue;
         IDSetNumber(&AnglesNP, nullptr);
     }
 
