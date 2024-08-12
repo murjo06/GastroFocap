@@ -18,6 +18,9 @@ static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 #define FLAT_RES 8
 #define FLAT_TIMEOUT 3
 
+#define MIN_ANGLE 0.0
+#define MAX_ANGLE 300.0
+
 FlatCap::FlatCap() : LightBoxInterface(this, true)
 {
     setVersion(1, 1);
@@ -37,8 +40,8 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%d", 0.0, 300.0, 1.0, 0.0);
-    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%d", 0.0, 300.0, 1.0, 0.0);
+    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%.0f", MIN_ANGLE, MAX_ANGLE, 1.0, 270.0);
+    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%.0f", MIN_ANGLE, MAX_ANGLE, 1.0, 0);
     // Create a new number vector property for Main tab
     IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
@@ -167,7 +170,6 @@ bool FlatCap::ISNewNumber(const char *dev, const char *name, double values[], ch
                 SetOpenAngle((uint16_t)round(values[i]));
             }
         }
-        AnglesNP.apply();
         return true;
     }
     if (processLightBoxNumber(dev, name, values, names, n))
@@ -305,6 +307,10 @@ IPState FlatCap::UnParkCap()
         return IPS_ALERT;
 }
 bool FlatCap::SetClosedAngle(uint16_t value) {
+    if((double)value > MAX_ANGLE || (double)value < MIN_ANGLE) {
+        LOGF_INFO("Angle value out of bounds (0 - 300)");
+        return false;
+    }
     if (isSimulation())
     {
         AnglesN[1].value = (double)value;
@@ -342,6 +348,10 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
     return true;
 }
 bool FlatCap::SetOpenAngle(uint16_t value) {
+    if((double)value > MAX_ANGLE || (double)value < MIN_ANGLE) {
+        LOGF_INFO("Angle value out of bounds (0 - 300)");
+        return false;
+    }
     if (isSimulation())
     {
         AnglesN[0].value = (double)value;
