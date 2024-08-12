@@ -19,7 +19,7 @@ static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 #define FLAT_TIMEOUT 3
 
 #define MIN_ANGLE 0.0
-#define MAX_ANGLE 300.0
+#define MAX_ANGLE 360.0
 
 FlatCap::FlatCap() : LightBoxInterface(this, true)
 {
@@ -40,8 +40,8 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%.0f", MIN_ANGLE, MAX_ANGLE, 1.0, 270.0);
-    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%.0f", MIN_ANGLE, MAX_ANGLE, 1.0, 0);
+    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 270.0);
+    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 0);
     // Create a new number vector property for Main tab
     IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
