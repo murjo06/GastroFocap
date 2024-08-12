@@ -114,7 +114,7 @@ void handleSerial() {
         Serial.readBytesUntil('\n', buffer, 20);
 		char* command = buffer;
 		int i = 0;
-		while(*command != ">") {
+		while(*command != '>') {
 			command = buffer + i;
 			i++;
 		}
