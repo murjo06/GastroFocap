@@ -108,13 +108,12 @@ void handleSerial() {
     if(Serial.available() >= 6) {
         char* cmd;
         char* data;
-        char temp[10];
-        int len = 0;
-        char str[20];
-        memset(str, 0, 20);
-        Serial.readBytesUntil('\n', str, 20);
-    	cmd = str + 1;
-    	data = str + 2;
+        char temp[7];
+        char buffer[6];
+        memset(buffer, '!', 6);
+        Serial.readBytesUntil('\n', buffer, 6);
+    	cmd = buffer + 1;
+    	data = buffer + 2;
 
         switch(*cmd) {
     	    /*
@@ -124,7 +123,7 @@ void handleSerial() {
     	    */
             case 'P': {
     	        sprintf(temp, "*P%d000", deviceId);
-    	        Serial.println(temp);
+    	        Serial.print(temp);
     	        break;
             }
             /*
@@ -135,7 +134,6 @@ void handleSerial() {
             case 'O': {
         	    sprintf(temp, "*O%d000", deviceId);
         	    setShutter(OPEN);
-        	    Serial.println(temp);
         	    break;
             }
             /*
@@ -146,7 +144,6 @@ void handleSerial() {
             case 'C': {
         	    sprintf(temp, "*C%d000", deviceId);
         	    setShutter(CLOSED);
-        	    Serial.println(temp);
         	    break;
             }
     	    /*
@@ -160,7 +157,6 @@ void handleSerial() {
 					lightStatus = ON;
 				}
         	    sprintf(temp, "*L%d000", deviceId);
-        	    Serial.println(temp);
         	    break;
             }
     	    /*
@@ -172,7 +168,6 @@ void handleSerial() {
 				analogWrite(LED_PIN, 0);
 				lightStatus = OFF;
         	    sprintf(temp, "*D%d000", deviceId);
-        	    Serial.println(temp);
         	    break;
             }
     	    /*
@@ -192,7 +187,6 @@ void handleSerial() {
         	    	analogWrite(LED_PIN, brightness);
                 }
         	    sprintf(temp, "*B%d%03d", deviceId, brightness);
-        	    Serial.println(temp);
                 break;
             }
 			/*
@@ -209,7 +203,6 @@ void handleSerial() {
 					moveServo(closedAngle);
                 }
         	    sprintf(temp, "*Z%d%03d", deviceId, closedAngle);
-        	    Serial.println(temp);
                 break;
             }
 			/*
@@ -226,7 +219,6 @@ void handleSerial() {
 					moveServo(openAngle);
                 }
         	    sprintf(temp, "*A%d%03d", deviceId, openAngle);
-        	    Serial.println(temp);
                 break;
             }
 			/*
@@ -238,7 +230,6 @@ void handleSerial() {
             case 'K': {
 				EEPROM.update(CLOSED_ANGLE_ADDRESS, closedAngle);
                 sprintf(temp, "*K%d%03d", deviceId, closedAngle);
-                Serial.println(temp);
                 break;
             }
 			/*
@@ -250,7 +241,6 @@ void handleSerial() {
             case 'H': {
 				EEPROM.update(OPEN_ANGLE_ADDRESS, openAngle);
                 sprintf(temp, "*H%d%03d", deviceId, openAngle);
-                Serial.println(temp);
                 break;
             }
     	    /*
@@ -262,7 +252,6 @@ void handleSerial() {
             case 'J': {
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
                 sprintf(temp, "*J%d%03d", deviceId, brightness);
-                Serial.println(temp);
                 break;
             }
     	    /*
@@ -275,7 +264,6 @@ void handleSerial() {
     	    */
             case 'S': {
                 sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
-                Serial.println(temp);
                 break;
             }
     	    /*
@@ -285,10 +273,10 @@ void handleSerial() {
     	    */
             case 'V': {
                 sprintf(temp, "*V%d001", deviceId);
-                Serial.println(temp);
                 break;
             }
         }
+		Serial.println(temp);
     	while(Serial.available() > 0) {
     		Serial.read();  
         }
