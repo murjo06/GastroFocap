@@ -296,19 +296,16 @@ void handleSerial() {
 }
 
 void setShutter(int shutter) {
-	if(shutter != OPEN || shutter != CLOSED) {
+	if(shutter == UNKNOWN) {
 		return;
 	}
-	if(shutter == OPEN && coverStatus != OPEN) {
+	if(shutter == OPEN) {
 		analogWrite(LED_PIN, 0);
 		lightStatus = OFF;
 		coverStatus = OPEN;
 		moveServo(openAngle);
-	} else if(shutter == CLOSED && coverStatus != CLOSED) {
+	} else {
 		coverStatus = CLOSED;
 		moveServo(closedAngle);
-	} else {
-		coverStatus = shutter;
-		moveServo((shutter == OPEN) ? openAngle : closedAngle);
 	}
 }
