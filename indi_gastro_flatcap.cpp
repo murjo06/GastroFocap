@@ -16,7 +16,7 @@ static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 
 #define FLAT_CMD 6
 #define FLAT_RES 8
-#define FLAT_TIMEOUT 3
+#define FLAT_TIMEOUT 5
 
 #define MIN_ANGLE 0.0
 #define MAX_ANGLE 360.0
