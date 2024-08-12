@@ -109,11 +109,17 @@ void handleSerial() {
         char* cmd;
         char* data;
         char temp[7];
-        char buffer[6];
-        memset(buffer, '!', 6);
-        Serial.readBytesUntil('\n', buffer, 6);
-    	cmd = buffer + 1;
-    	data = buffer + 2;
+        char buffer[20];
+        memset(buffer, '!', 20);
+        Serial.readBytesUntil('\n', buffer, 20);
+		char* command = buffer;
+		int i = 0;
+		while(*command != ">") {
+			command = buffer + i;
+			i++;
+		}
+    	cmd = command + 1;
+    	data = command + 2;
 
         switch(*cmd) {
     	    /*
