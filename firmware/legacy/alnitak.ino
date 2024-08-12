@@ -23,21 +23,18 @@ Recieve  : *D19000\n    //confirms light turned off.
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define SHUTTER_OPEN = 30		//degrees for servo motor
-#define SHUTTER_CLOSED = 300
+#define OPEN_ANGLE = 30				// degrees for servo motor
+#define CLOSED_ANGLE = 300
 
-#define MIN_SERVO_DELAY 50;
+#define MIN_SERVO_DELAY 200
+#define SERVO_SPEED 0.5				// in degrees per ms
+#define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
-int ledPin = 5;
-int brightness = 0;
+#define LED_PIN = 5;
+
+#define BRIGHTNESS_ADDRESS 0
+
 Servo servo;
-
-enum devices {
-	FLAT_MAN_L = 10,
-	FLAT_MAN_XL = 15,
-	FLAT_MAN = 19,
-	FLIP_FLAT = 99
-};
 
 enum motorStatuses {
 	STOPPED = 0,
@@ -55,26 +52,28 @@ enum shutterStatuses {
 	OPEN
 };
 
-enum addresses {
-	COVER_ADDRESS = 0,
-	LIGHT_ADDRESS,
-	BRIGHTNESS_ADDRESS
-};
-
-int deviceId = FLIP_FLAT;
-int motorStatus = STOPPED;
-int lightStatus = EEPROM.read(LIGHT_ADDRESS);
-int coverStatus = EEPROM.read(COVER_ADDRESS);
+uint8_t deviceId = 99;
+uint8_t motorStatus = STOPPED;
+uint8_t lightStatus = OFF;
+uint8_t coverStatus = CLOSED;
+uint8_t brightness = 0;
 
 void setup() {
 	servo.attach(9);
     Serial.begin(9600);
-    pinMode(ledPin, OUTPUT);
-    analogWrite(ledPin, 0);
+    pinMode(LED_PIN, OUTPUT);
+    analogWrite(LED_PIN, 0);
 }
 
 void loop() {
     handleSerial();
+}
+
+void moveServo(int angle) {
+	servo.write(angle);
+	motorStatus = RUNNING;
+	delay(max(MIN_SERVO_DELAY, SERVO_DELAY_OFFSET + round(abs(servo.read() - angle) / SERVO_SPEED)));
+	motorStatus = STOPPED;
 }
 
 void handleSerial() {
@@ -93,7 +92,7 @@ void handleSerial() {
     	    /*
     	    Ping device
     	    Request: >P000\n
-    	    Return : *Pii000\n
+    	    Return : *Pid000\n
     	    id = deviceId
     	    */
             case 'P': {
@@ -104,12 +103,9 @@ void handleSerial() {
             /*
         	Open shutter
         	Request: >O000\n
-        	Return : *Oii000\n
-        	id = deviceId
-        	This command is only supported on the Flip-Flat!
+        	Return : *Oid000\n
     	    */
             case 'O': {
-				EEPROM.write(COVER_ADDRESS, OPEN);
         	    sprintf(temp, "*O%d000", deviceId);
         	    setShutter(OPEN);
         	    Serial.println(temp);
@@ -118,12 +114,9 @@ void handleSerial() {
             /*
         	Close shutter
         	Request: >C000\n
-        	Return : *Cii000\n
-        	id = deviceId
-        	This command is only supported on the Flip-Flat!
+        	Return : *Cid000\n
     	    */
             case 'C': {
-				EEPROM.update(COVER_ADDRESS, CLOSED);
         	    sprintf(temp, "*C%d000", deviceId);
         	    setShutter(CLOSED);
         	    Serial.println(temp);
@@ -132,42 +125,44 @@ void handleSerial() {
     	    /*
         	Turn light on
         	Request: >L000\n
-        	Return : *Lii000\n
-        	id = deviceId
+        	Return : *Lid000\n
     	    */
             case 'L': {
+				if(coverStatus == CLOSED) {
+        	    	lightStatus = ON;
+        	    	analogWrite(LED_PIN, brightness);
+				}
         	    sprintf(temp, "*L%d000", deviceId);
         	    Serial.println(temp);
-        	    lightStatus = ON;
-        	    analogWrite(ledPin, brightness);
         	    break;
             }
     	    /*
         	Turn light off
         	Request: >D000\n
-        	Return : *Dii000\n
-        	id = deviceId
+        	Return : *Did000\n
     	    */
             case 'D': {
         	    sprintf(temp, "*D%d000", deviceId);
         	    Serial.println(temp);
         	    lightStatus = OFF;
-        	    analogWrite(ledPin, 0);
+        	    analogWrite(LED_PIN, 0);
         	    break;
             }
     	    /*
         	Set brightness
         	Request: >Bxxx\n
         	xxx = brightness value from 000-255
-        	Return : *Biiyyy\n
-        	id = deviceId
+        	Return : *Bidyyy\n
         	yyy = value that brightness was set from 000-255
     	    */
             case 'B': {
         	    brightness = atoi(data);
+				if(brightness < 1 || brightness > 255) {
+					break;
+				}
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
-        	    if(lightStatus == ON) {
-        	    	analogWrite(ledPin, brightness);
+        	    if(lightStatus == ON && coverStatus == CLOSED) {
+        	    	analogWrite(LED_PIN, brightness);
                 }
         	    sprintf(temp, "*B%d%03d", deviceId, brightness);
         	    Serial.println(temp);
@@ -176,8 +171,7 @@ void handleSerial() {
     	    /*
         	Get brightness
         	Request: >J000\n
-        	Return : *Jiiyyy\n
-        	id = deviceId
+        	Return : *Jidyyy\n
         	yyy = current brightness value from 000-255
     	    */
             case 'J': {
@@ -190,7 +184,6 @@ void handleSerial() {
         	Get device status:
         	Request: >S000\n
         	Return : *SidMLC\n
-        	id = deviceId
         	M  = motor status (0 stopped, 1 running)
         	L  = light status (0 off, 1 on)
         	C  = cover status (0 moving, 1 closed, 2 open)
@@ -203,8 +196,7 @@ void handleSerial() {
     	    /*
         	Get firmware version
         	Request: >V000\n
-        	Return : *Vii001\n
-        	id = deviceId
+        	Return : *Vid001\n
     	    */
             case 'V': {
                 sprintf(temp, "*V%d001", deviceId);
@@ -222,24 +214,16 @@ void setShutter(int shutter) {
 	if(shutter != OPEN || shutter != CLOSED) {
 		return;
 	}
-	EEPROM.update(COVER_ADDRESS, shutter);
 	if(shutter == OPEN && coverStatus != OPEN) {
+		analogWrite(LED_PIN, 0);
+		lightStatus = OFF;
 		coverStatus = OPEN;
-		servo.write(SHUTTER_OPEN);
-		motorStatus = RUNNING;
-		delay(MIN_SERVO_DElAY);
-		motorStatus = STOPPED;
+		moveServo(OPEN_ANGLE);
 	} else if(shutter == CLOSED && coverStatus != CLOSED) {
 		coverStatus = CLOSED;
-		servo.write(SHUTTER_CLOSED);
-		motorStatus = RUNNING;
-		delay(MIN_SERVO_DElAY);
-		motorStatus = STOPPED;
+		moveServo(CLOSED_ANGLE);
 	} else {
 		coverStatus = shutter;
-		servo.write(shutter == OPEN ? SHUTTER_OPEN : SHUTTER_CLOSED);
-		motorStatus = RUNNING;
-		delay(MIN_SERVO_DElAY);
-		motorStatus = STOPPED;
+		moveServo((shutter == OPEN) ? OPEN_ANGLE : CLOSED_ANGLE);
 	}
 }

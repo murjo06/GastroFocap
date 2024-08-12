@@ -183,7 +183,7 @@ void handleSerial() {
     	    */
             case 'B': {
         	    brightness = atoi(data);
-				if(brightness == 0) {
+				if(brightness < 1 || brightness > 255) {
 					break;
 				}
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
@@ -299,6 +299,8 @@ void setShutter(int shutter) {
 		return;
 	}
 	if(shutter == OPEN && coverStatus != OPEN) {
+		analogWrite(LED_PIN, 0);
+		lightStatus = OFF;
 		coverStatus = OPEN;
 		moveServo(openAngle);
 	} else if(shutter == CLOSED && coverStatus != CLOSED) {

@@ -16,7 +16,7 @@ void loop() {
             Serial.print("Invalid position");
         } else {
             Serial.print("Moving to ");
-            Serial.println(buffer.toInt());
+            Serial.println(position);
             servo.write(position);
         }
     }
