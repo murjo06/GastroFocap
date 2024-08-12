@@ -23,14 +23,14 @@ Recieve  : *D19000\n    //confirms light turned off.
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define OPEN_ANGLE = 30				// degrees for servo motor
-#define CLOSED_ANGLE = 300
+#define OPEN_ANGLE 30				// degrees for servo motor
+#define CLOSED_ANGLE 300
 
 #define MIN_SERVO_DELAY 200
 #define SERVO_SPEED 0.5				// in degrees per ms
 #define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
-#define LED_PIN = 5
+#define LED_PIN 5
 
 #define BRIGHTNESS_ADDRESS 0
 
