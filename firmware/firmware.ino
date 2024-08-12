@@ -36,7 +36,8 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #define SERVO_SPEED 0.5				// in degrees per ms
 #define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
-#define LED_PIN 5;
+#define LED_PIN 5
+
 Servo servo;
 
 enum motorStatuses {
