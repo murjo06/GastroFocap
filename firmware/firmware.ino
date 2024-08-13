@@ -107,10 +107,10 @@ uint16_t readInt16EEPROM(int address) {
 void handleSerial() {
     if(Serial.available() >= 6) {
         char* cmd;
-        char* data;
+        char* dat;
         char temp[7];
         char buffer[20];
-        memset(buffer, '!', 20);
+        memset(buffer, 0, 20);
         Serial.readBytesUntil('\n', buffer, 20);
 		char* command = buffer;
 		int i = 0;
@@ -119,7 +119,9 @@ void handleSerial() {
 			i++;
 		}
     	cmd = command + 1;
-    	data = command + 2;
+    	dat = command + 2;
+		char data[3] = {0};
+		strncpy(data, dat, 3);
 
         switch(*cmd) {
     	    /*
@@ -129,7 +131,6 @@ void handleSerial() {
     	    */
             case 'P': {
     	        sprintf(temp, "*P%d000", deviceId);
-    	        Serial.print(temp);
     	        break;
             }
             /*
