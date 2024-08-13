@@ -131,7 +131,8 @@ void handleSerial() {
     	    */
             case 'P': {
     	        sprintf(temp, "*P%d000", deviceId);
-    	        break;
+    	        Serial.println(temp);
+				break;
             }
             /*
         	Open shutter
@@ -141,7 +142,8 @@ void handleSerial() {
             case 'O': {
         	    sprintf(temp, "*O%d000", deviceId);
         	    setShutter(OPEN);
-        	    break;
+        	    Serial.println(temp);
+				break;
             }
             /*
         	Close shutter
@@ -151,7 +153,8 @@ void handleSerial() {
             case 'C': {
         	    sprintf(temp, "*C%d000", deviceId);
         	    setShutter(CLOSED);
-        	    break;
+        	    Serial.println(temp);
+				break;
             }
     	    /*
         	Turn light on
@@ -164,7 +167,8 @@ void handleSerial() {
 					lightStatus = ON;
 				}
         	    sprintf(temp, "*L%d000", deviceId);
-        	    break;
+        	    Serial.println(temp);
+				break;
             }
     	    /*
         	Turn light off
@@ -175,7 +179,8 @@ void handleSerial() {
 				analogWrite(LED_PIN, 0);
 				lightStatus = OFF;
         	    sprintf(temp, "*D%d000", deviceId);
-        	    break;
+        	    Serial.println(temp);
+				break;
             }
     	    /*
         	Set brightness
@@ -187,6 +192,7 @@ void handleSerial() {
             case 'B': {
         	    brightness = atoi(data);
 				if(brightness < 1 || brightness > 255) {
+					Serial.println(temp);
 					break;
 				}
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
@@ -194,7 +200,8 @@ void handleSerial() {
         	    	analogWrite(LED_PIN, brightness);
                 }
         	    sprintf(temp, "*B%d%03d", deviceId, brightness);
-                break;
+                Serial.println(temp);
+				break;
             }
 			/*
         	Set shutter closed angle
@@ -210,7 +217,8 @@ void handleSerial() {
 					moveServo(closedAngle);
                 }
         	    sprintf(temp, "*Z%d%03d", deviceId, closedAngle);
-                break;
+                Serial.println(temp);
+				break;
             }
 			/*
         	Set shutter open angle
@@ -226,7 +234,8 @@ void handleSerial() {
 					moveServo(openAngle);
                 }
         	    sprintf(temp, "*A%d%03d", deviceId, openAngle);
-                break;
+                Serial.println(temp);
+				break;
             }
 			/*
         	Get shutter closed angle
@@ -237,7 +246,8 @@ void handleSerial() {
             case 'K': {
 				EEPROM.update(CLOSED_ANGLE_ADDRESS, closedAngle);
                 sprintf(temp, "*K%d%03d", deviceId, closedAngle);
-                break;
+                Serial.println(temp);
+				break;
             }
 			/*
         	Get shutter open angle
@@ -248,7 +258,8 @@ void handleSerial() {
             case 'H': {
 				EEPROM.update(OPEN_ANGLE_ADDRESS, openAngle);
                 sprintf(temp, "*H%d%03d", deviceId, openAngle);
-                break;
+                Serial.println(temp);
+				break;
             }
     	    /*
         	Get brightness
@@ -259,7 +270,8 @@ void handleSerial() {
             case 'J': {
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
                 sprintf(temp, "*J%d%03d", deviceId, brightness);
-                break;
+                Serial.println(temp);
+				break;
             }
     	    /*
         	Get device status:
@@ -271,7 +283,8 @@ void handleSerial() {
     	    */
             case 'S': {
                 sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
-                break;
+                Serial.println(temp);
+				break;
             }
     	    /*
         	Get firmware version
@@ -280,10 +293,10 @@ void handleSerial() {
     	    */
             case 'V': {
                 sprintf(temp, "*V%d001", deviceId);
-                break;
+                Serial.println(temp);
+				break;
             }
         }
-		Serial.println(temp);
     	while(Serial.available() > 0) {
     		Serial.read();  
         }
