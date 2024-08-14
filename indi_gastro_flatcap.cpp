@@ -687,7 +687,7 @@ bool FlatCap::getBrightness()
     return true;
 }
 
-bool FlatCap::SetLightBoxBrightness(uint8_t value)
+bool FlatCap::SetLightBoxBrightness(uint16_t value)
 {
     if (isSimulation())
     {

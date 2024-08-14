@@ -42,7 +42,7 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         virtual bool SetOpenAngle(uint16_t value);
 
         // From Light Box
-        virtual bool SetLightBoxBrightness(uint8_t value);
+        virtual bool SetLightBoxBrightness(uint16_t value) override;
         virtual bool EnableLightBox(bool enable) override;
 
     private:
@@ -80,7 +80,7 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         uint8_t prevCoverStatus{ 0xFF };
         uint8_t prevLightStatus{ 0xFF };
         uint8_t prevMotorStatus{ 0xFF };
-        uint8_t prevBrightness{ 0xFF };
+        uint16_t prevBrightness{ 0xFF };
         uint16_t prevClosedAngle{ 0 };
         uint16_t prevOpenAngle{ 0 };
 
