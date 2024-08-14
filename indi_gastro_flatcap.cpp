@@ -48,9 +48,9 @@ bool FlatCap::initProperties()
     initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
     initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
 
-    LightIntensityN[0].min  = 1;
-    LightIntensityN[0].max  = 255;
-    LightIntensityN[0].step = 1;
+    LightIntensityN[0].min  = 1.0;
+    LightIntensityN[0].max  = 255.0;
+    LightIntensityN[0].step = 5.0;
 
     // if using just lightbox, remove DUSTCAP_INTERFACE
     setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
