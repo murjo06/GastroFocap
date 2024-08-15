@@ -79,14 +79,21 @@ void moveServo(int angle) {
 void handleSerial() {
     if(Serial.available() >= 6) {
         char* cmd;
-        char* data;
-        char temp[10];
-        int len = 0;
-        char str[20];
-        memset(str, 0, 20);
-        Serial.readBytesUntil('\n', str, 20);
-    	cmd = str + 1;
-    	data = str + 2;
+        char* dat;
+        char temp[7];
+        char buffer[20];
+        memset(buffer, 0, 20);
+        Serial.readBytesUntil('\n', buffer, 20);
+		char* command = buffer;
+		int i = 0;
+		while(*command != '>') {
+			command = buffer + i;
+			i++;
+		}
+    	cmd = command + 1;
+    	dat = command + 2;
+		char data[3] = {0};
+		strncpy(data, dat, 3);
 
         switch(*cmd) {
     	    /*
@@ -143,9 +150,9 @@ void handleSerial() {
     	    */
             case 'D': {
         	    sprintf(temp, "*D%d000", deviceId);
-        	    Serial.println(temp);
         	    lightStatus = OFF;
         	    analogWrite(LED_PIN, 0);
+				Serial.println(temp);
         	    break;
             }
     	    /*
