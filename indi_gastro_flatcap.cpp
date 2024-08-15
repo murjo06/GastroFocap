@@ -164,10 +164,10 @@ bool FlatCap::ISNewNumber(const char *dev, const char *name, double values[], ch
     if(strcmp(name, "ANGLES") == 0) {
         for(int i = 0; i < n; i++) {
             if(strcmp(names[i], "CLOSED_ANGLE") == 0) {
-                SetClosedAngle((uint16_t)round(values[i]));
+                setClosedAngle((uint16_t)round(values[i]));
             }
             else if(strcmp(names[i], "OPEN_ANGLE") == 0) {
-                SetOpenAngle((uint16_t)round(values[i]));
+                setOpenAngle((uint16_t)round(values[i]));
             }
         }
         return true;
