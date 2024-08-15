@@ -38,8 +38,6 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         // From Dust Cap
         virtual IPState ParkCap() override;
         virtual IPState UnParkCap() override;
-        virtual bool SetClosedAngle(uint16_t value);
-        virtual bool SetOpenAngle(uint16_t value);
 
         // From Light Box
         virtual bool SetLightBoxBrightness(uint16_t value) override;
@@ -54,6 +52,8 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         bool getBrightness();
         bool getClosedAngle();
         bool getOpenAngle();
+        bool setClosedAngle(uint16_t value);
+        bool setOpenAngle(uint16_t value);
 
         void parkTimeout();
         int parkTimeoutID { -1 };

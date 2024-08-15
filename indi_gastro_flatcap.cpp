@@ -306,7 +306,7 @@ IPState FlatCap::UnParkCap()
     else
         return IPS_ALERT;
 }
-bool FlatCap::SetClosedAngle(uint16_t value) {
+bool FlatCap::setClosedAngle(uint16_t value) {
     if (isSimulation())
     {
         AnglesN[1].value = (double)value;
@@ -343,7 +343,7 @@ bool FlatCap::SetClosedAngle(uint16_t value) {
 
     return true;
 }
-bool FlatCap::SetOpenAngle(uint16_t value) {
+bool FlatCap::setOpenAngle(uint16_t value) {
     if (isSimulation())
     {
         AnglesN[0].value = (double)value;
