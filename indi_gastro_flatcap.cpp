@@ -21,7 +21,7 @@ static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 #define MIN_ANGLE 0.0
 #define MAX_ANGLE 360.0
 
-FlatCap::FlatCap() : DustCapInterface(), LightBoxInterface(this, true)
+FlatCap::FlatCap() : LightBoxInterface(this, true), DustCapInterface()
 {
     setVersion(1, 1);
 }
