@@ -128,33 +128,14 @@ bool FlatCap::Handshake()
 
     PortFD = serialConnection->getPortFD();
 
-    /* Drop RTS */
-    int i = 0;
-    i |= TIOCM_RTS;
-    if (ioctl(PortFD, TIOCMBIC, &i) != 0)
-    {
-        /* Try ping anyway, to allow flip-flat implementations using virtual serial ports to proceed */
-        if(ping())
-        {
-          LOG_DEBUG("Successfully connected to flatcap without hardware IOCTL");
-          return true;
-        }
-        LOGF_ERROR("IOCTL error %s.", strerror(errno));
-        return false;
-    }
-
-    i |= TIOCM_RTS;
-    if (ioctl(PortFD, TIOCMGET, &i) != 0)
-    {
-        LOGF_ERROR("IOCTL error %s.", strerror(errno));
-        return false;
-    }
-
     if (!ping())
     {
         LOG_ERROR("Device ping failed.");
         return false;
     }
+    
+    setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
+	syncDriverInfo();
 
     return true;
 }
@@ -731,6 +712,7 @@ bool FlatCap::sendCommand(const char *command, char *response)
     int nbytes_read = 0, nbytes_written = 0, rc = -1;
     char buffer[FLAT_CMD + 1] = {0};
     char errstr[MAXRBUF] = {0};
+    tcflush(PortFD, TCIOFLUSH);
     tcflush(PortFD, TCIOFLUSH);
     if(isSimulation())
     {
