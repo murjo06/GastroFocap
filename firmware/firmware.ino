@@ -4,29 +4,29 @@ Arduino Nano firmware using Alnitak protocol
 Code adapted from https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDLightBoxAlnitak.ino
 
 
-Send     : >S000\n      //request state
-Recieve  : *Sid000\n    //returned state
+Send     : >S000\n      // request state
+Recieve  : *Sid000\n    // returned state
 
-Send     : >Bxxx\n      //set brightness to xxx
-Recieve  : *Bidxxx\n    //confirming brightness set to xxx
+Send     : >Bxxx\n      // set brightness to xxx
+Recieve  : *Bidxxx\n    // confirming brightness set to xxx
 
-Send     : >J000\n      //get brightness
-Recieve  : *Bidxxx\n    //brightness value of xxx (assuming as set from above)
+Send     : >J000\n      // get brightness
+Recieve  : *Bidxxx\n    // brightness value of xxx (assuming as set from above)
 
-Send     : >L000\n      //turn light on (uses set brightness value)
-Recieve  : *Lid000\n    //confirms light turned on
+Send     : >L000\n      // turn light on (uses set brightness value)
+Recieve  : *Lid000\n    // confirms light turned on
 
-Send     : >D000\n      //turn light off (brightness value should not be changed)
-Recieve  : *Did000\n    //confirms light turned off.
+Send     : >D000\n      // turn light off (brightness value should not be changed)
+Recieve  : *Did000\n    // confirms light turned off.
 
 
 Added open/closed cover angle commands:
 
-Send     : >Zxxx\n		//set closed angle to xxx
-Recieve	 : *Zidxxx\n	//confirming angle set to xxx
+Send     : >Zxxx\n		// set closed angle to xxx
+Recieve	 : *Zidxxx\n	// confirming angle set to xxx
 
-Send     : >Axxx\n		//set open angle to xxx
-Recieve	 : *Aidxxx\n	//confirming angle set to xxx
+Send     : >Axxx\n		// set open angle to xxx
+Recieve	 : *Aidxxx\n	// confirming angle set to xxx
 */
 
 #include <Servo.h>
@@ -36,7 +36,7 @@ Recieve	 : *Aidxxx\n	//confirming angle set to xxx
 #define SERVO_SPEED 0.5				// in degrees per ms
 #define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
-#define LED_PIN 5
+#define LED_PIN 5					// best to use a pin with a higher PWM frequency, so 5 and 6 for uno/nano
 
 Servo servo;
 
@@ -310,10 +310,10 @@ void setShutter(int shutter) {
 	if(shutter == OPEN) {
 		analogWrite(LED_PIN, 0);
 		lightStatus = OFF;
-		coverStatus = OPEN;
 		moveServo(openAngle);
+		coverStatus = OPEN;
 	} else {
-		coverStatus = CLOSED;
 		moveServo(closedAngle);
+		coverStatus = CLOSED;
 	}
 }
