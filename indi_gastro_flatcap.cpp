@@ -30,19 +30,17 @@ bool FlatCap::initProperties()
 {
     INDI::DefaultDevice::initProperties();
 
-    // Status
     IUFillText(&StatusT[0], "Cover", "Cover", nullptr);
     IUFillText(&StatusT[1], "Light", "Light", nullptr);
     IUFillText(&StatusT[2], "Motor", "Motor", nullptr);
     IUFillTextVector(&StatusTP, StatusT, 3, getDeviceName(), "Status", "Status", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    // Firmware version
     IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
     IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 270.0);
     IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 0);
-    // Create a new number vector property for Main tab
+
     IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
     initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
@@ -52,7 +50,6 @@ bool FlatCap::initProperties()
     LightIntensityN[0].max  = 255.0;
     LightIntensityN[0].step = 5.0;
 
-    // if using just lightbox, remove DUSTCAP_INTERFACE
     setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
 
     addAuxControls();
@@ -70,8 +67,6 @@ bool FlatCap::initProperties()
 void FlatCap::ISGetProperties(const char *dev)
 {
     INDI::DefaultDevice::ISGetProperties(dev);
-
-    // Get Light box properties
     isGetLightBoxProperties(dev);
 }
 
@@ -94,12 +89,13 @@ bool FlatCap::updateProperties()
     }
     else
     {
-        deleteProperty(ParkCapSP.name);
-        deleteProperty(LightSP.name);
-        deleteProperty(LightIntensityNP.name);
-        deleteProperty(StatusTP.name);
-        deleteProperty(FirmwareTP.name);
-        deleteProperty(AnglesNP.name);
+        // ParkCapSP.name
+        deleteProperty(&ParkCapSP);
+        deleteProperty(&LightSP);
+        deleteProperty(&LightIntensityNP);
+        deleteProperty(&StatusTP);
+        deleteProperty(&FirmwareTP);
+        deleteProperty(&AnglesNP);
 
         updateLightBoxProperties();
     }
@@ -208,7 +204,7 @@ bool FlatCap::ping()
     char productString[3] = { 0 };
     snprintf(productString, 3, "%s", response + 2);
 
-    int rc = sscanf(productString, "%" SCNu16, &productID);
+    int rc = sscanf(productString, "%hu", &productID);
     if (rc <= 0)
     {
         LOGF_ERROR("Unable to parse input (%s)", response);

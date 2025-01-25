@@ -3,6 +3,8 @@ Arduino Nano firmware using Alnitak protocol
 
 Code adapted from https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDLightBoxAlnitak.ino
 
+Send     : >P000\n      // ping
+Recieve  : *Pid000\n    // returned ping
 
 Send     : >S000\n      // request state
 Recieve  : *Sid000\n    // returned state
@@ -245,8 +247,8 @@ void handleSerial() {
         	yyy = value that closed angle was set from 000-300
     	    */
             case 'K': {
-				EEPROM.update(CLOSED_ANGLE_ADDRESS, closedAngle);
-                sprintf(temp, "*K%d%03d", deviceId, closedAngle);
+				readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
+                sprintf(temp, "*K%d%03d", deviceId, closedAngle % 1000);
                 Serial.println(temp);
 				break;
             }
@@ -257,8 +259,8 @@ void handleSerial() {
         	yyy = current brightness value from 000-255
     	    */
             case 'H': {
-				EEPROM.update(OPEN_ANGLE_ADDRESS, openAngle);
-                sprintf(temp, "*H%d%03d", deviceId, openAngle);
+				readInt16EEPROM(OPEN_ANGLE_ADDRESS);
+                sprintf(temp, "*H%d%03d", deviceId, openAngle % 1000);
                 Serial.println(temp);
 				break;
             }
