@@ -90,12 +90,12 @@ bool FlatCap::updateProperties()
     else
     {
         // ParkCapSP.name
-        deleteProperty(&ParkCapSP);
-        deleteProperty(&LightSP);
-        deleteProperty(&LightIntensityNP);
-        deleteProperty(&StatusTP);
-        deleteProperty(&FirmwareTP);
-        deleteProperty(&AnglesNP);
+        deleteProperty(ParkCapSP.name);
+        deleteProperty(LightSP.name);
+        deleteProperty(LightIntensityNP.name);
+        deleteProperty(StatusTP.name);
+        deleteProperty(FirmwareTP.name);
+        deleteProperty(AnglesNP.name);
 
         updateLightBoxProperties();
     }
