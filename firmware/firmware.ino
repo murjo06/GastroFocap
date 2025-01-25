@@ -37,6 +37,7 @@ Recieve	 : *Aidxxx\n	// confirming angle set to xxx
 #define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
 
 #define LED_PIN 5					// best to use a pin with a higher PWM frequency, so 5 and 6 for uno/nano
+#define SERVO_PIN 9
 
 Servo servo;
 
@@ -76,7 +77,7 @@ uint16_t closedAngle = 0;
 uint16_t openAngle = 0;
 
 void setup() {
-	servo.attach(9);
+	servo.attach(SERVO_PIN);
     Serial.begin(9600);
     pinMode(LED_PIN, OUTPUT);
     analogWrite(LED_PIN, 0);
