@@ -194,15 +194,11 @@ void handleSerial() {
     	    */
             case 'B': {
         	    brightness = atoi(data);
-				if(brightness < 1 || brightness > 255) {
-					Serial.println(temp);
-					break;
-				}
-				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
+				EEPROM.update(BRIGHTNESS_ADDRESS, brightness % 256);
         	    if(lightStatus == ON && coverStatus == CLOSED) {
-        	    	analogWrite(LED_PIN, brightness);
+        	    	analogWrite(LED_PIN, brightness % 256);
                 }
-        	    sprintf(temp, "*B%d%03d", deviceId, brightness);
+        	    sprintf(temp, "*B%d%03d", deviceId, brightness % 256);
                 Serial.println(temp);
 				break;
             }
@@ -215,11 +211,11 @@ void handleSerial() {
     	    */
             case 'Z': {
         	    closedAngle = atoi(data);
-				updateInt16EEPROM(CLOSED_ANGLE_ADDRESS, closedAngle);
+				updateInt16EEPROM(CLOSED_ANGLE_ADDRESS, closedAngle % 1000);
         	    if(coverStatus == CLOSED) {
-					moveServo(closedAngle);
+					moveServo(closedAngle % 1000);
                 }
-        	    sprintf(temp, "*Z%d%03d", deviceId, closedAngle);
+        	    sprintf(temp, "*Z%d%03d", deviceId, closedAngle % 1000);
                 Serial.println(temp);
 				break;
             }
@@ -232,11 +228,11 @@ void handleSerial() {
     	    */
             case 'A': {
         	    openAngle = atoi(data);
-				updateInt16EEPROM(OPEN_ANGLE_ADDRESS, openAngle);
+				updateInt16EEPROM(OPEN_ANGLE_ADDRESS, openAngle % 1000);
         	    if(coverStatus == OPEN) {
-					moveServo(openAngle);
+					moveServo(openAngle % 1000);
                 }
-        	    sprintf(temp, "*A%d%03d", deviceId, openAngle);
+        	    sprintf(temp, "*A%d%03d", deviceId, openAngle % 1000);
                 Serial.println(temp);
 				break;
             }
@@ -247,7 +243,7 @@ void handleSerial() {
         	yyy = value that closed angle was set from 000-300
     	    */
             case 'K': {
-				readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
+				closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
                 sprintf(temp, "*K%d%03d", deviceId, closedAngle % 1000);
                 Serial.println(temp);
 				break;
@@ -259,7 +255,7 @@ void handleSerial() {
         	yyy = current brightness value from 000-255
     	    */
             case 'H': {
-				readInt16EEPROM(OPEN_ANGLE_ADDRESS);
+				openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
                 sprintf(temp, "*H%d%03d", deviceId, openAngle % 1000);
                 Serial.println(temp);
 				break;
@@ -272,7 +268,7 @@ void handleSerial() {
     	    */
             case 'J': {
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
-                sprintf(temp, "*J%d%03d", deviceId, brightness);
+                sprintf(temp, "*J%d%03d", deviceId, brightness % 256);
                 Serial.println(temp);
 				break;
             }
