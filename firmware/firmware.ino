@@ -216,8 +216,8 @@ void handleSerial() {
         	Set brightness
         	Request: >Bxxx\n
         	xxx = brightness value from 001-255
-        	Return : *Bidyyy\n
-        	yyy = value that brightness was set from 001-255
+        	Return : *Bidxxx\n
+        	xxx = value that brightness was set from 001-255
     	    */
             case 'B': {
         	    brightness = atoi(data);
@@ -233,8 +233,8 @@ void handleSerial() {
         	Set shutter closed angle
         	Request: >Zxxx\n
         	xxx = angle from 000-300
-        	Return : *Zidyyy\n
-        	yyy = value that closed angle was set from 000-300
+        	Return : *Zidxxx\n
+        	xxx = value that closed angle was set from 000-360
     	    */
             case 'Z': {
         	    closedAngle = atoi(data);
@@ -250,8 +250,8 @@ void handleSerial() {
         	Set shutter open angle
         	Request: >Axxx\n
         	xxx = angle from 000-300
-        	Return : *Aidyyy\n
-        	yyy = value that open angle was set from 000-300
+        	Return : *Aidxxx\n
+        	xxx = value that open angle was set from 000-360
     	    */
             case 'A': {
         	    openAngle = atoi(data);
@@ -266,8 +266,8 @@ void handleSerial() {
 			/*
         	Get brightness
         	Request: >J000\n
-        	Return : *Jidyyy\n
-        	yyy = current brightness value from 000-255
+        	Return : *Jidxxx\n
+        	xxx = current brightness value from 000-255
     	    */
             case 'J': {
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
@@ -278,8 +278,8 @@ void handleSerial() {
 			/*
         	Get shutter closed angle
         	Request: >K000\n
-        	Return : *Kidyyy\n
-        	yyy = value that closed angle was set from 000-300
+        	Return : *Kidxxx\n
+        	xxx = value that closed angle was set from 000-360
     	    */
             case 'K': {
 				closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
@@ -290,8 +290,8 @@ void handleSerial() {
 			/*
         	Get shutter open angle
         	Request: >H000\n
-        	Return : *Hidyyy\n
-        	yyy = current brightness value from 000-255
+        	Return : *Hidxxx\n
+        	xxx = current brightness value from 000-360
     	    */
             case 'H': {
 				openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
