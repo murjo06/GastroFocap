@@ -215,7 +215,7 @@ void handleSerial() {
     	    /*
         	Set brightness
         	Request: >Bxxx\n
-        	xxx = brightness value from 000-255
+        	xxx = brightness value from 001-255
         	Return : *Bidyyy\n
         	yyy = value that brightness was set from 001-255
     	    */

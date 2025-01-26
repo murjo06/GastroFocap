@@ -11,7 +11,6 @@
 #include <inttypes.h>
 #include <sys/ioctl.h>
 
-// We declare an auto pointer to FlatCap.
 static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 
 #define FLAT_CMD 6
@@ -89,7 +88,6 @@ bool FlatCap::updateProperties()
     }
     else
     {
-        // ParkCapSP.name
         deleteProperty(ParkCapSP.name);
         deleteProperty(LightSP.name);
         deleteProperty(LightIntensityNP.name);
@@ -123,6 +121,8 @@ bool FlatCap::Handshake()
     }
 
     PortFD = serialConnection->getPortFD();
+    
+    tcflush(PortFD, TCIOFLUSH);
 
     if (!ping())
     {
@@ -660,7 +660,7 @@ bool FlatCap::getBrightness()
         LightIntensityN[0].value = brightnessValue;
         IDSetNumber(&LightIntensityNP, nullptr);
     }
-
+    
     return true;
 }
 
@@ -708,7 +708,6 @@ bool FlatCap::sendCommand(const char *command, char *response)
     int nbytes_read = 0, nbytes_written = 0, rc = -1;
     char buffer[FLAT_CMD + 1] = {0};
     char errstr[MAXRBUF] = {0};
-    tcflush(PortFD, TCIOFLUSH);
     tcflush(PortFD, TCIOFLUSH);
     if(isSimulation())
     {
