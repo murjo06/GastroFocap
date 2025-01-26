@@ -3,32 +3,46 @@ Arduino Nano firmware using Alnitak protocol
 
 Code adapted from https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDLightBoxAlnitak.ino
 
+The host (INDI server) sends commands starting with >, this firmware responds with *
+
 Send     : >P000\n      // ping
-Recieve  : *Pid000\n    // returned ping
+Recieve  : *Pid000\n    // confirm
 
 Send     : >S000\n      // request state
 Recieve  : *Sid000\n    // returned state
 
-Send     : >Bxxx\n      // set brightness to xxx
-Recieve  : *Bidxxx\n    // confirming brightness set to xxx
+Send     : >O000\n      // open shutter
+Recieve  : *Oid000\n    // confirm
 
-Send     : >J000\n      // get brightness
-Recieve  : *Bidxxx\n    // brightness value of xxx (assuming as set from above)
+Send     : >C000\n      // close shutter
+Recieve  : *Cid000\n    // confirm
 
 Send     : >L000\n      // turn light on (uses set brightness value)
-Recieve  : *Lid000\n    // confirms light turned on
+Recieve  : *Lid000\n    // confirm
 
 Send     : >D000\n      // turn light off (brightness value should not be changed)
-Recieve  : *Did000\n    // confirms light turned off.
+Recieve  : *Did000\n    // confirm
 
-
-Added open/closed cover angle commands:
+Send     : >Bxxx\n      // set brightness to xxx
+Recieve  : *Bidxxx\n    // confirm
 
 Send     : >Zxxx\n		// set closed angle to xxx
-Recieve	 : *Zidxxx\n	// confirming angle set to xxx
+Recieve	 : *Zidxxx\n	// confirm
 
 Send     : >Axxx\n		// set open angle to xxx
-Recieve	 : *Aidxxx\n	// confirming angle set to xxx
+Recieve	 : *Aidxxx\n	// confirm
+
+Send     : >J000\n      // get brightness
+Recieve  : *Bidxxx\n    // returned brightness
+
+Send     : >Hxxx\n		// get closed angle
+Recieve	 : *Hidxxx\n	// returned angle
+
+Send     : >Kxxx\n		// get open angle
+Recieve	 : *Kidxxx\n	// returned angle
+
+Send     : >Vxxx\n		// get firmware version
+Recieve	 : *Vidxxx\n	// returned firmware verison
 */
 
 #include <Servo.h>
@@ -70,7 +84,7 @@ enum addresses {
 	OPEN_ANGLE_ADDRESS = 3
 };
 
-uint8_t deviceId = 99;			// id for gastro flatcap
+uint8_t deviceId = 99;				// id for gastro flatcap
 uint8_t motorStatus = STOPPED;
 uint8_t lightStatus = OFF;
 uint8_t coverStatus = CLOSED;
@@ -135,6 +149,19 @@ void handleSerial() {
             case 'P': {
     	        sprintf(temp, "*P%d000", deviceId);
     	        Serial.println(temp);
+				break;
+            }
+			/*
+        	Get device status:
+        	Request: >S000\n
+        	Return : *SidMLC\n
+        	M  = motor status (0 stopped, 1 running)
+        	L  = light status (0 off, 1 on)
+        	C  = cover status (0 moving, 1 closed, 2 open)
+    	    */
+            case 'S': {
+                sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
+                Serial.println(temp);
 				break;
             }
             /*
@@ -237,6 +264,18 @@ void handleSerial() {
 				break;
             }
 			/*
+        	Get brightness
+        	Request: >J000\n
+        	Return : *Jidyyy\n
+        	yyy = current brightness value from 000-255
+    	    */
+            case 'J': {
+				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
+                sprintf(temp, "*J%d%03d", deviceId, brightness % 256);
+                Serial.println(temp);
+				break;
+            }
+			/*
         	Get shutter closed angle
         	Request: >K000\n
         	Return : *Kidyyy\n
@@ -257,31 +296,6 @@ void handleSerial() {
             case 'H': {
 				openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
                 sprintf(temp, "*H%d%03d", deviceId, openAngle % 1000);
-                Serial.println(temp);
-				break;
-            }
-    	    /*
-        	Get brightness
-        	Request: >J000\n
-        	Return : *Jidyyy\n
-        	yyy = current brightness value from 000-255
-    	    */
-            case 'J': {
-				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
-                sprintf(temp, "*J%d%03d", deviceId, brightness % 256);
-                Serial.println(temp);
-				break;
-            }
-    	    /*
-        	Get device status:
-        	Request: >S000\n
-        	Return : *SidMLC\n
-        	M  = motor status (0 stopped, 1 running)
-        	L  = light status (0 off, 1 on)
-        	C  = cover status (0 moving, 1 closed, 2 open)
-    	    */
-            case 'S': {
-                sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
                 Serial.println(temp);
 				break;
             }
