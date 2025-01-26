@@ -100,6 +100,7 @@ void setup() {
 	closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
 	openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
+	//TCCR0B = (TCCR0B & 0b11111000) | 0x02;		// set Timer 0 prescaler to 8
 }
 
 void loop() {
