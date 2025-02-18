@@ -48,11 +48,11 @@ Recieve	 : *Vidxxx\n	// returned firmware verison
 #include <Servo.h>
 #include <EEPROM.h>
 
-#define MIN_SERVO_DELAY 200
-#define SERVO_SPEED 0.5				// in degrees per ms
-#define SERVO_DELAY_OFFSET 100		// delay added to delay() in ms
+#define SERVO_INCREMENT 1			// in degrees
+#define SERVO_DELAY					// delay in ms after each servo increment, speed of the servo can be calculated by
+									// SERVO_INCREMENT / SERVO_DELAY, the result is in deg/ms
 
-#define LED_PIN 5					// best to use a pin with a higher PWM frequency, so 5 and 6 for uno/nano
+#define LED_PIN 5					// best to use a pin with a higher PWM frequency, so 5 or 6 for uno/nano
 #define SERVO_PIN 9
 
 Servo servo;
@@ -108,9 +108,17 @@ void loop() {
 }
 
 void moveServo(int angle) {
-	servo.write(angle);
 	motorStatus = RUNNING;
-	delay(max(MIN_SERVO_DELAY, SERVO_DELAY_OFFSET + round(abs(servo.read() - angle) / SERVO_SPEED)));
+	int servoAngle = (coverStatus == CLOSED) ? closedAngle : openAngle;
+	long start = millis();
+	int direction = (servoAngle > angle) ? -1 : 1;
+	while(abs(servoAngle - angle) >= SERVO_INCREMENT) {
+		servoAngle += SERVO_INCREMENT * direction;
+		servo.write(servoAngle);
+		delay(SERVO_DELAY);
+	}
+	servo.write(angle);
+	delay(SERVO_DELAY);
 	motorStatus = STOPPED;
 }
 
