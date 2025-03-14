@@ -49,7 +49,7 @@ Recieve	 : *Vidxxx\n	// returned firmware verison
 #include <EEPROM.h>
 
 #define SERVO_INCREMENT 1			// in degrees
-#define SERVO_DELAY					// delay in ms after each servo increment, speed of the servo can be calculated by
+#define SERVO_DELAY	20				// delay in ms after each servo increment, speed of the servo can be calculated by
 									// SERVO_INCREMENT / SERVO_DELAY, the result is in deg/ms
 
 #define LED_PIN 5					// best to use a pin with a higher PWM frequency, so 5 or 6 for uno/nano
