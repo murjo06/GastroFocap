@@ -3,13 +3,19 @@ import time
 import logging
 import threading
 import PyIndi
+import datetime
+import os
 
 EXPOSURE_TIME = 0.01
-NUMBER_OF_EXPOSURES = 30
+NUMBER_OF_EXPOSURES = 2
 
 telescope = "EQMod Mount"
 ccd = "Canon DSLR EOS 1500D"
 flatcap = "Gastro Flatcap"
+
+destination = f"../Flats/{datetime.datetime.today().strftime('%Y-%m-%d')}"
+
+os.makedirs(destination, exist_ok=True)
 
 class IndiClient(PyIndi.BaseClient):
     def __init__(self):
@@ -136,6 +142,7 @@ ccd_exposure[0].setValue(EXPOSURE_TIME)
 indiclient.sendNewProperty(ccd_exposure)
 while i < NUMBER_OF_EXPOSURES:
     blobEvent.wait()
+    time.sleep(0.5)
     if i + 1 < NUMBER_OF_EXPOSURES:
         ccd_exposure[0].setValue(EXPOSURE_TIME)
         blobEvent.clear()
@@ -144,14 +151,13 @@ while i < NUMBER_OF_EXPOSURES:
         print("name: ", blob.getName(), " size: ", blob.getSize(), " format: ", blob.getFormat())
         fits = blob.getblobdata()
         print("fits data type: ", type(fits))
+        with open(f"{destination}/{i:03}.cr2", "wb") as file:
+            file.write(blob.getblobdata())
     i += 1
 
-
-
-
-
-
-
+flatLightProperty = device_flatcap.getSwitch("FLAT_LIGHT_CONTROL")
+flatLightProperty[0].setState(PyIndi.ISS_OFF)
+indiclient.sendNewProperty(flatLightProperty)
 
 
 
