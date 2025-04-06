@@ -114,7 +114,6 @@ bool FlatCap::Handshake()
 
         SetTimer(getCurrentPollingPeriod());
 
-        setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
         syncDriverInfo();
 
         return true;
@@ -130,7 +129,6 @@ bool FlatCap::Handshake()
         return false;
     }
     
-    setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
 	syncDriverInfo();
 
     return true;
