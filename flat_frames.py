@@ -13,9 +13,9 @@ import os
 # 	This requires having PyINDI installed, I recommend pulling it from source below and running `python setup.py install`,
 #	as the pip repo doesn't work on newer versions.
 #
-#   Make sure to set the brightness beforehand and set EXPOSURE_TIME so that the histogram peak is around 1/3 of the whole axis.
+#   Make sure to set the brightness beforehand and set EXPOSURE_TIME so that the histogram peak is at around 1/3 of the whole axis.
 #	Don't set it too low, the whole sensor has to be somewhat equally illuminated for the flats to come out well.
-#   Set NUMBER_OF_EXPOSURES to some amount, I use 30, doesn't really matter.
+#   Set NUMBER_OF_EXPOSURES to some amount, I use 20, doesn't really matter.
 #
 #   Make sure to change the telescope, ccd and flatcap to whatever names you have, just copy the names in the INDI control panel.
 #	The destination is self explanatory, I have it set so it uses today's date.
@@ -24,7 +24,7 @@ import os
 #
 
 EXPOSURE_TIME = 0.01
-NUMBER_OF_EXPOSURES = 30
+NUMBER_OF_EXPOSURES = 20
 
 telescope = "EQMod Mount"
 ccd = "Canon DSLR EOS 1500D"
@@ -59,9 +59,6 @@ time.sleep(1)
 
 # * connection
 
-device_telescope = None
-telescope_connect = None
-
 device_telescope = indiclient.getDevice(telescope)
 while not device_telescope:
     time.sleep(0.5)
@@ -79,9 +76,6 @@ if not device_telescope.isConnected():
     indiclient.sendNewProperty(telescope_connect)
 
 time.sleep(0.5)
-
-device_flatcap = None
-flatcap_connect = None
 
 device_flatcap = indiclient.getDevice(flatcap)
 while not device_flatcap:
