@@ -6,8 +6,25 @@ import PyIndi
 import datetime
 import os
 
+#
+#   This is a script for automated flatcap functionality, first parking the mount and cap, turning the light on, taking some exposures
+#   and turning the light off. The light uses the FLAT_LIGHT_CONTROL default INDI property, not just setting the brightness
+#   to 0 as some scripts do.
+# 	This requires having PyINDI installed, I recommend pulling it from source below and running `python setup.py install`,
+#	as the pip repo doesn't work on newer versions.
+#
+#   Make sure to set the brightness beforehand and set EXPOSURE_TIME so that the histogram peak is around 1/3 of the whole axis.
+#	Don't set it too low, the whole sensor has to be somewhat equally illuminated for the flats to come out well.
+#   Set NUMBER_OF_EXPOSURES to some amount, I use 30, doesn't really matter.
+#
+#   Make sure to change the telescope, ccd and flatcap to whatever names you have, just copy the names in the INDI control panel.
+#	The destination is self explanatory, I have it set so it uses today's date.
+#
+#	This script is based (more like copied) from the pyindi-client examples (https://github.com/indilib/pyindi-client).
+#
+
 EXPOSURE_TIME = 0.01
-NUMBER_OF_EXPOSURES = 2
+NUMBER_OF_EXPOSURES = 30
 
 telescope = "EQMod Mount"
 ccd = "Canon DSLR EOS 1500D"
@@ -33,8 +50,7 @@ indiclient=IndiClient()
 indiclient.setServer("localhost", 7624)
 
 if not indiclient.connectServer():
-    print(f"No indiserver running on {indiclient.getHost()}:{indiclient.getPort()} - Try to run")
-    print("  indiserver indi_simulator_telescope indi_simulator_ccd")
+    print(f"No indiserver running on {indiclient.getHost()}:{indiclient.getPort()}")
     sys.exit(1)
 
 time.sleep(1)
@@ -57,11 +73,12 @@ while not telescope_connect:
     telescope_connect = device_telescope.getSwitch("CONNECTION")
 
 if not device_telescope.isConnected():
-    print("Failed to connect flatcap, retrying...")
+    print("Failed to connect telescope, retrying...")
     telescope_connect.reset()
     telescope_connect[0].setState(PyIndi.ISS_ON)
     indiclient.sendNewProperty(telescope_connect)
 
+time.sleep(0.5)
 
 device_flatcap = None
 flatcap_connect = None
@@ -82,6 +99,7 @@ if not device_flatcap.isConnected():
     flatcap_connect[0].setState(PyIndi.ISS_ON)
     indiclient.sendNewProperty(flatcap_connect)
 
+time.sleep(0.5)
 
 device_ccd = indiclient.getDevice(ccd)
 while not (device_ccd):
@@ -93,10 +111,12 @@ while not (ccd_connect):
     time.sleep(0.5)
     ccd_connect = device_ccd.getSwitch("CONNECTION")
 if not (device_ccd.isConnected()):
+    print("Failed to connect ccd, retrying...")
     ccd_connect.reset()
     ccd_connect[0].setState(PyIndi.ISS_ON)
     indiclient.sendNewProperty(ccd_connect)
 
+time.sleep(0.5)
 
 
 # * parking and light
@@ -105,16 +125,28 @@ mountParkProperty = device_telescope.getSwitch("TELESCOPE_PARK")
 mountParkProperty[0].setState(PyIndi.ISS_ON)
 indiclient.sendNewProperty(mountParkProperty)
 
+print("Parking telescope...")
+
+time.sleep(10)
+
 capParkProperty = device_flatcap.getSwitch("CAP_PARK")
 capParkProperty[0].setState(PyIndi.ISS_ON)
 indiclient.sendNewProperty(capParkProperty)
+
+print("Parking cap...")
+
+time.sleep(10)
 
 flatLightProperty = device_flatcap.getSwitch("FLAT_LIGHT_CONTROL")
 flatLightProperty[0].setState(PyIndi.ISS_ON)
 indiclient.sendNewProperty(flatLightProperty)
 
+time.sleep(3)
+
 
 # * exposures
+
+print("Starting exposures")
 
 ccd_exposure = device_ccd.getNumber("CCD_EXPOSURE")
 while not (ccd_exposure):
@@ -148,12 +180,14 @@ while i < NUMBER_OF_EXPOSURES:
         blobEvent.clear()
         indiclient.sendNewProperty(ccd_exposure)
     for blob in ccd_ccd1:
-        print("name: ", blob.getName(), " size: ", blob.getSize(), " format: ", blob.getFormat())
+        print("Name: ", blob.getName(), " size: ", blob.getSize(), " format: ", blob.getFormat())
         fits = blob.getblobdata()
-        print("fits data type: ", type(fits))
+        print("Fits data type: ", type(fits))
         with open(f"{destination}/{i:03}.cr2", "wb") as file:
             file.write(blob.getblobdata())
     i += 1
+    
+time.sleep(5)
 
 flatLightProperty = device_flatcap.getSwitch("FLAT_LIGHT_CONTROL")
 flatLightProperty[0].setState(PyIndi.ISS_OFF)
