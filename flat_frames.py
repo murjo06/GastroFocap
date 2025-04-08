@@ -121,7 +121,10 @@ indiclient.sendNewProperty(mountParkProperty)
 
 print("Parking telescope...")
 
-time.sleep(10)
+while mountParkProperty.getState() == PyIndi.IPS_BUSY:
+    time.sleep(0.5)
+
+time.sleep(3)
 
 capParkProperty = device_flatcap.getSwitch("CAP_PARK")
 capParkProperty[0].setState(PyIndi.ISS_ON)
@@ -129,7 +132,10 @@ indiclient.sendNewProperty(capParkProperty)
 
 print("Parking cap...")
 
-time.sleep(10)
+while capParkProperty.getState() == PyIndi.IPS_BUSY:
+    time.sleep(0.5)
+
+time.sleep(3)
 
 flatLightProperty = device_flatcap.getSwitch("FLAT_LIGHT_CONTROL")
 flatLightProperty[0].setState(PyIndi.ISS_ON)
