@@ -75,13 +75,13 @@ enum shutterStatuses {
 
 /*
 ! IMPORTANT:
-Both CLOSED_ANGLE_ADDRESS and OPEN_ANGLE_ADDRESS store 16 bit integers (255 just isn't enough for the positions).
-That means they use two EEPROM addresses each (CLOSED_ANGLE uses addresses 1 and 2, for example)
+Both PARK_ANGLE_ADDRESS and UNPARK_ANGLE_ADDRESS store 16 bit integers (255 just isn't enough for the positions).
+That means they use two EEPROM addresses each (parkAngle uses addresses 1 and 2, for example)
 */
 enum addresses {
 	BRIGHTNESS_ADDRESS = 0,
-	CLOSED_ANGLE_ADDRESS = 1,
-	OPEN_ANGLE_ADDRESS = 3
+	PARK_ANGLE_ADDRESS = 1,
+	UNPARK_ANGLE_ADDRESS = 3
 };
 
 uint8_t deviceId = 99;				// id for gastro flatcap
@@ -89,17 +89,22 @@ uint8_t motorStatus = STOPPED;
 uint8_t lightStatus = OFF;
 uint8_t coverStatus = CLOSED;
 uint8_t brightness = 0;
-uint16_t closedAngle = 0;
-uint16_t openAngle = 0;
+uint16_t parkAngle = 0;
+uint16_t unparkAngle = 0;
+uint16_t currentServoPosition = 0;
 
 void setup() {
 	servo.attach(SERVO_PIN);
     Serial.begin(9600);
     pinMode(LED_PIN, OUTPUT);
     analogWrite(LED_PIN, 0);
-	closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
-	openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
+	parkAngle = readInt16EEPROM(PARK_ANGLE_ADDRESS);
+	unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
+	currentServoPosition = parkAngle;
+	while(Serial.available()) {
+		Serial.read();			// clears buffer
+	}
 	//TCCR0B = (TCCR0B & 0b11111000) | 0x02;		// set Timer 0 prescaler to 8
 }
 
@@ -109,15 +114,15 @@ void loop() {
 
 void moveServo(int angle) {
 	motorStatus = RUNNING;
-	int servoAngle = (coverStatus == CLOSED) ? closedAngle : openAngle;
 	long start = millis();
 	int direction = (servoAngle > angle) ? -1 : 1;
-	while(abs(servoAngle - angle) >= SERVO_INCREMENT) {
-		servoAngle += SERVO_INCREMENT * direction;
-		servo.write(servoAngle);
+	while(abs(currentServoPosition - angle) >= SERVO_INCREMENT) {
+		currentServoPosition += SERVO_INCREMENT * direction;
+		servo.write(currentServoPosition);
 		delay(SERVO_DELAY);
 	}
 	servo.write(angle);
+	currentServoPosition = angle;
 	delay(SERVO_DELAY);
 	motorStatus = STOPPED;
 }
@@ -239,36 +244,36 @@ void handleSerial() {
 				break;
             }
 			/*
-        	Set shutter closed angle
+        	Set shutter park angle
         	Request: >Zxxx\n
-        	xxx = angle from 000-300
+        	xxx = angle from 000-360
         	Return : *Zidxxx\n
-        	xxx = value that closed angle was set from 000-360
+        	xxx = value that park angle was set from 000-360
     	    */
             case 'Z': {
-        	    closedAngle = atoi(data);
-				updateInt16EEPROM(CLOSED_ANGLE_ADDRESS, closedAngle % 1000);
+        	    parkAngle = atoi(data);
+				updateInt16EEPROM(PARK_ANGLE_ADDRESS, parkAngle % 1000);
         	    if(coverStatus == CLOSED) {
-					moveServo(closedAngle % 1000);
+					moveServo(parkAngle % 1000);
                 }
-        	    sprintf(temp, "*Z%d%03d", deviceId, closedAngle % 1000);
+        	    sprintf(temp, "*Z%d%03d", deviceId, parkAngle % 1000);
                 Serial.println(temp);
 				break;
             }
 			/*
-        	Set shutter open angle
+        	Set shutter unpark angle
         	Request: >Axxx\n
-        	xxx = angle from 000-300
+        	xxx = angle from 000-360
         	Return : *Aidxxx\n
-        	xxx = value that open angle was set from 000-360
+        	xxx = value that unpark angle was set from 000-360
     	    */
             case 'A': {
-        	    openAngle = atoi(data);
-				updateInt16EEPROM(OPEN_ANGLE_ADDRESS, openAngle % 1000);
+        	    unparkAngle = atoi(data);
+				updateInt16EEPROM(UNPARK_ANGLE_ADDRESS, unparkAngle % 360);
         	    if(coverStatus == OPEN) {
-					moveServo(openAngle % 1000);
+					moveServo(unparkAngle % 1000);
                 }
-        	    sprintf(temp, "*A%d%03d", deviceId, openAngle % 1000);
+        	    sprintf(temp, "*A%d%03d", deviceId, unparkAngle % 360);
                 Serial.println(temp);
 				break;
             }
@@ -285,26 +290,26 @@ void handleSerial() {
 				break;
             }
 			/*
-        	Get shutter closed angle
+        	Get shutter park angle
         	Request: >K000\n
         	Return : *Kidxxx\n
-        	xxx = value that closed angle was set from 000-360
+        	xxx = value that park angle was set from 000-360
     	    */
             case 'K': {
-				closedAngle = readInt16EEPROM(CLOSED_ANGLE_ADDRESS);
-                sprintf(temp, "*K%d%03d", deviceId, closedAngle % 1000);
+				parkAngle = readInt16EEPROM(PARK_ANGLE_ADDRESS);
+                sprintf(temp, "*K%d%03d", deviceId, parkAngle % 360);
                 Serial.println(temp);
 				break;
             }
 			/*
-        	Get shutter open angle
+        	Get shutter unpark angle
         	Request: >H000\n
         	Return : *Hidxxx\n
-        	xxx = current brightness value from 000-360
+        	xxx = value that unpark angle was set from 000-360
     	    */
             case 'H': {
-				openAngle = readInt16EEPROM(OPEN_ANGLE_ADDRESS);
-                sprintf(temp, "*H%d%03d", deviceId, openAngle % 1000);
+				unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
+                sprintf(temp, "*H%d%03d", deviceId, unparkAngle % 360);
                 Serial.println(temp);
 				break;
             }
@@ -332,10 +337,10 @@ void setShutter(int shutter) {
 	if(shutter == OPEN) {
 		analogWrite(LED_PIN, 0);
 		lightStatus = OFF;
-		moveServo(openAngle);
+		moveServo(unparkAngle);
 		coverStatus = OPEN;
 	} else {
-		moveServo(closedAngle);
+		moveServo(parkAngle);
 		coverStatus = CLOSED;
 	}
 }

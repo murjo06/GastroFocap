@@ -29,16 +29,16 @@ bool FlatCap::initProperties()
 {
     INDI::DefaultDevice::initProperties();
 
-    IUFillText(&StatusT[0], "Cover", "Cover", nullptr);
-    IUFillText(&StatusT[1], "Light", "Light", nullptr);
-    IUFillText(&StatusT[2], "Motor", "Motor", nullptr);
+    IUFillText(&StatusT[0], "COVER", "Cover", nullptr);
+    IUFillText(&StatusT[1], "LIGHT", "Light", nullptr);
+    IUFillText(&StatusT[2], "MOTOR", "Motor", nullptr);
     IUFillTextVector(&StatusTP, StatusT, 3, getDeviceName(), "Status", "Status", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillText(&FirmwareT[0], "Version", "Version", nullptr);
+    IUFillText(&FirmwareT[0], "VERSION", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&AnglesN[0], "OPEN_ANGLE", "Open", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 270.0);
-    IUFillNumber(&AnglesN[1], "CLOSED_ANGLE", "Closed", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 0);
+    IUFillNumber(&AnglesN[0], "PARK_ANGLE", "Park", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 270.0);
+    IUFillNumber(&AnglesN[1], "UNPARK_ANGLE", "Unpark", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 0);
 
     IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
@@ -138,11 +138,11 @@ bool FlatCap::ISNewNumber(const char *dev, const char *name, double values[], ch
 {
     if(strcmp(name, "ANGLES") == 0) {
         for(int i = 0; i < n; i++) {
-            if(strcmp(names[i], "CLOSED_ANGLE") == 0) {
-                setClosedAngle((uint16_t)round(values[i]));
+            if(strcmp(names[i], "PARK_ANGLE") == 0) {
+                setParkAngle((uint16_t)round(values[i]));
             }
-            else if(strcmp(names[i], "OPEN_ANGLE") == 0) {
-                setOpenAngle((uint16_t)round(values[i]));
+            else if(strcmp(names[i], "UNPARK_ANGLE") == 0) {
+                setUnparkAngle((uint16_t)round(values[i]));
             }
         }
         return true;
@@ -219,8 +219,8 @@ bool FlatCap::getStartupData()
     bool rc1 = getFirmwareVersion();
     bool rc2 = getStatus();
     bool rc3 = getBrightness();
-    bool rc4 = getClosedAngle();
-    bool rc5 = getOpenAngle();
+    bool rc4 = getParkAngle();
+    bool rc5 = getUnparkAngle();
 
     return (rc1 && rc2 && rc3 && rc4 && rc5);
 }
@@ -281,10 +281,10 @@ IPState FlatCap::UnParkCap()
     else
         return IPS_ALERT;
 }
-bool FlatCap::setClosedAngle(uint16_t value) {
+bool FlatCap::setParkAngle(uint16_t value) {
     if (isSimulation())
     {
-        AnglesN[1].value = (double)value;
+        AnglesN[0].value = (double)value;
         IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
@@ -305,23 +305,19 @@ bool FlatCap::setClosedAngle(uint16_t value) {
 
     if (rc <= 0)
     {
-        LOGF_ERROR("Unable to parse closed angle value (%s)", response);
+        LOGF_ERROR("Unable to parse park angle value (%s)", response);
         return false;
     }
 
-    if (angleValue != prevClosedAngle)
-    {
-        prevClosedAngle = angleValue;
-        AnglesN[1].value = (double)angleValue;
-        IDSetNumber(&AnglesNP, nullptr);
-    }
+    AnglesN[0].value = (double)angleValue;
+    IDSetNumber(&AnglesNP, nullptr);
 
     return true;
 }
-bool FlatCap::setOpenAngle(uint16_t value) {
+bool FlatCap::setUnparkAngle(uint16_t value) {
     if (isSimulation())
     {
-        AnglesN[0].value = (double)value;
+        AnglesN[1].value = (double)value;
         IDSetNumber(&AnglesNP, nullptr);
         return true;
     }
@@ -342,20 +338,16 @@ bool FlatCap::setOpenAngle(uint16_t value) {
 
     if (rc <= 0)
     {
-        LOGF_ERROR("Unable to parse open angle value (%s)", response);
+        LOGF_ERROR("Unable to parse unpark angle value (%s)", response);
         return false;
     }
 
-    if (angleValue != prevOpenAngle)
-    {
-        prevOpenAngle = angleValue;
-        AnglesN[0].value = (double)angleValue;
-        IDSetNumber(&AnglesNP, nullptr);
-    }
+    AnglesN[1].value = (double)angleValue;
+    IDSetNumber(&AnglesNP, nullptr);
 
     return true;
 }
-bool FlatCap::getClosedAngle()
+bool FlatCap::getParkAngle()
 {
     if (isSimulation())
     {
@@ -378,16 +370,12 @@ bool FlatCap::getClosedAngle()
         return false;
     }
 
-    if (angleValue != prevClosedAngle)
-    {
-        prevClosedAngle = angleValue;
-        AnglesN[1].value = angleValue;
-        IDSetNumber(&AnglesNP, nullptr);
-    }
+    AnglesN[0].value = (double)angleValue;
+    IDSetNumber(&AnglesNP, nullptr);
 
     return true;
 }
-bool FlatCap::getOpenAngle()
+bool FlatCap::getUnparkAngle()
 {
     if (isSimulation())
     {
@@ -410,12 +398,8 @@ bool FlatCap::getOpenAngle()
         return false;
     }
 
-    if (angleValue != prevOpenAngle)
-    {
-        prevOpenAngle = angleValue;
-        AnglesN[0].value = angleValue;
-        IDSetNumber(&AnglesNP, nullptr);
-    }
+    AnglesN[1].value = (double)angleValue;
+    IDSetNumber(&AnglesNP, nullptr);
 
     return true;
 }
@@ -444,9 +428,9 @@ bool FlatCap::EnableLightBox(bool enable)
 
     char expectedResponse[FLAT_RES];
     if (enable)
-        snprintf(expectedResponse, FLAT_RES, "*L%02d", productID);
+        snprintf(expectedResponse, FLAT_RES, "*L%02d000", productID);
     else
-        snprintf(expectedResponse, FLAT_RES, "*D%02d", productID);
+        snprintf(expectedResponse, FLAT_RES, "*D%02d000", productID);
 
     return (strstr(response, expectedResponse));
 }

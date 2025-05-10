@@ -50,10 +50,10 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         bool getStatus();
         bool getFirmwareVersion();
         bool getBrightness();
-        bool getClosedAngle();
-        bool getOpenAngle();
-        bool setClosedAngle(uint16_t value);
-        bool setOpenAngle(uint16_t value);
+        bool getParkAngle();
+        bool getUnparkAngle();
+        bool setParkAngle(uint16_t value);
+        bool setUnparkAngle(uint16_t value);
 
         void parkTimeout();
         int parkTimeoutID { -1 };
@@ -81,8 +81,8 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         uint8_t prevLightStatus{ 0xFF };
         uint8_t prevMotorStatus{ 0xFF };
         uint16_t prevBrightness{ 0xFF };
-        uint16_t prevClosedAngle{ 0 };
-        uint16_t prevOpenAngle{ 0 };
+        uint16_t prevParkAngle{ 0 };
+        uint16_t prevUnparkAngle{ 0 };
 
         Connection::Serial *serialConnection{ nullptr };
 };
