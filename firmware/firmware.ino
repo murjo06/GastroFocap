@@ -11,10 +11,10 @@ Recieve  : *Pid000\n    // confirm
 Send     : >S000\n      // request state
 Recieve  : *Sid000\n    // returned state
 
-Send     : >O000\n      // open shutter
+Send     : >O000\n      // unpark shutter
 Recieve  : *Oid000\n    // confirm
 
-Send     : >C000\n      // close shutter
+Send     : >C000\n      // park shutter
 Recieve  : *Cid000\n    // confirm
 
 Send     : >L000\n      // turn light on (uses set brightness value)
@@ -26,19 +26,19 @@ Recieve  : *Did000\n    // confirm
 Send     : >Bxxx\n      // set brightness to xxx
 Recieve  : *Bidxxx\n    // confirm
 
-Send     : >Zxxx\n		// set closed angle to xxx
+Send     : >Zxxx\n		// set parked angle to xxx
 Recieve	 : *Zidxxx\n	// confirm
 
-Send     : >Axxx\n		// set open angle to xxx
+Send     : >Axxx\n		// set unpark angle to xxx
 Recieve	 : *Aidxxx\n	// confirm
 
 Send     : >J000\n      // get brightness
 Recieve  : *Bidxxx\n    // returned brightness
 
-Send     : >Hxxx\n		// get closed angle
+Send     : >Hxxx\n		// get park angle
 Recieve	 : *Hidxxx\n	// returned angle
 
-Send     : >Kxxx\n		// get open angle
+Send     : >Kxxx\n		// get unpark angle
 Recieve	 : *Kidxxx\n	// returned angle
 
 Send     : >Vxxx\n		// get firmware version
@@ -69,8 +69,8 @@ enum lightStatuses {
 
 enum shutterStatuses {
 	UNKNOWN,
-	CLOSED,
-	OPEN
+	PARKED,
+	UNPARKED
 };
 
 /*
@@ -81,13 +81,14 @@ That means they use two EEPROM addresses each (parkAngle uses addresses 1 and 2,
 enum addresses {
 	BRIGHTNESS_ADDRESS = 0,
 	PARK_ANGLE_ADDRESS = 1,
-	UNPARK_ANGLE_ADDRESS = 3
+	UNPARK_ANGLE_ADDRESS = 3,
+	SHUTTER_STATUS_ADDRESS = 5
 };
 
 uint8_t deviceId = 99;				// id for gastro flatcap
 uint8_t motorStatus = STOPPED;
 uint8_t lightStatus = OFF;
-uint8_t coverStatus = CLOSED;
+uint8_t coverStatus = PARKED;
 uint8_t brightness = 0;
 uint16_t parkAngle = 0;
 uint16_t unparkAngle = 0;
@@ -102,6 +103,7 @@ void setup() {
 	unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
 	currentServoPosition = parkAngle;
+	coverStatus = EEPROM.get(SHUTTER_STATUS_ADDRESS)
 	while(Serial.available()) {
 		Serial.read();			// clears buffer
 	}
@@ -171,7 +173,7 @@ void handleSerial() {
         	Return : *SidMLC\n
         	M  = motor status (0 stopped, 1 running)
         	L  = light status (0 off, 1 on)
-        	C  = cover status (0 moving, 1 closed, 2 open)
+        	C  = cover status (0 moving, 1 parked, 2 unparked)
     	    */
             case 'S': {
                 sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
@@ -179,24 +181,24 @@ void handleSerial() {
 				break;
             }
             /*
-        	Open shutter
+        	Unpark shutter
         	Request: >O000\n
         	Return : *Oid000\n
     	    */
             case 'O': {
         	    sprintf(temp, "*O%d000", deviceId);
-        	    setShutter(OPEN);
+        	    setShutter(UNPARKED);
         	    Serial.println(temp);
 				break;
             }
             /*
-        	Close shutter
+        	Park shutter
         	Request: >C000\n
         	Return : *Cid000\n
     	    */
             case 'C': {
         	    sprintf(temp, "*C%d000", deviceId);
-        	    setShutter(CLOSED);
+        	    setShutter(PARKED);
         	    Serial.println(temp);
 				break;
             }
@@ -206,7 +208,7 @@ void handleSerial() {
         	Return : *Lid000\n
     	    */
             case 'L': {
-				if(coverStatus == CLOSED) {
+				if(coverStatus == PARKED) {
         	    	analogWrite(LED_PIN, brightness);
 					lightStatus = ON;
 				}
@@ -236,7 +238,7 @@ void handleSerial() {
             case 'B': {
         	    brightness = atoi(data);
 				EEPROM.update(BRIGHTNESS_ADDRESS, brightness % 256);
-        	    if(lightStatus == ON && coverStatus == CLOSED) {
+        	    if(lightStatus == ON && coverStatus == PARKED) {
         	    	analogWrite(LED_PIN, brightness % 256);
                 }
         	    sprintf(temp, "*B%d%03d", deviceId, brightness % 256);
@@ -252,11 +254,11 @@ void handleSerial() {
     	    */
             case 'Z': {
         	    parkAngle = atoi(data);
-				updateInt16EEPROM(PARK_ANGLE_ADDRESS, parkAngle % 1000);
-        	    if(coverStatus == CLOSED) {
+				updateInt16EEPROM(PARK_ANGLE_ADDRESS, parkAngle % 360);
+        	    if(coverStatus == PARKED) {
 					moveServo(parkAngle % 1000);
                 }
-        	    sprintf(temp, "*Z%d%03d", deviceId, parkAngle % 1000);
+        	    sprintf(temp, "*Z%d%03d", deviceId, parkAngle % 360);
                 Serial.println(temp);
 				break;
             }
@@ -270,7 +272,7 @@ void handleSerial() {
             case 'A': {
         	    unparkAngle = atoi(data);
 				updateInt16EEPROM(UNPARK_ANGLE_ADDRESS, unparkAngle % 360);
-        	    if(coverStatus == OPEN) {
+        	    if(coverStatus == UNPARKED) {
 					moveServo(unparkAngle % 1000);
                 }
         	    sprintf(temp, "*A%d%03d", deviceId, unparkAngle % 360);
@@ -334,13 +336,14 @@ void setShutter(int shutter) {
 	if(shutter == UNKNOWN) {
 		return;
 	}
-	if(shutter == OPEN) {
+	if(shutter == PARKED) {
 		analogWrite(LED_PIN, 0);
 		lightStatus = OFF;
 		moveServo(unparkAngle);
-		coverStatus = OPEN;
-	} else {
+		coverStatus = UNPARKED;
+	} else if(shutter == UNPARKED) {
 		moveServo(parkAngle);
-		coverStatus = CLOSED;
+		coverStatus = PARKED;
 	}
+	EEPROM.update(SHUTTER_STATUS_ADDRESS, shutter);
 }
