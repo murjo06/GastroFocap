@@ -339,9 +339,12 @@ void setShutter(int shutter) {
 	if(shutter == PARKED) {
 		analogWrite(LED_PIN, 0);
 		lightStatus = OFF;
+		coverStatus = UNKNOWN;
+		lightStatus = OFF;
 		moveServo(unparkAngle);
 		coverStatus = UNPARKED;
 	} else if(shutter == UNPARKED) {
+		coverStatus = UNKNOWN;
 		moveServo(parkAngle);
 		coverStatus = PARKED;
 	}
