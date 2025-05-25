@@ -1,3 +1,6 @@
 *.DS_store
-pcb/GastroFlatcap-backups
-pcb/fp-info-cache
+pcb/*
+!pcb/GastroFlatcap.kicad_pcb
+!pcb/GastroFlatcap.kicad_prl
+!pcb/GastroFlatcap.kicad_pro
+!pcb/GastroFlatcap.kicad_sch
