@@ -138,197 +138,197 @@ uint16_t readInt16EEPROM(int address) {
 }
 
 void handleSerial() {
-    if(Serial.available() >= 6) {
-        char* cmd;
-        char* dat;
-        char temp[7];
-        char buffer[20];
-        memset(buffer, 0, 20);
-        Serial.readBytesUntil('\n', buffer, 20);
-		char* command = buffer;
-		int i = 0;
-		while(*command != '>') {
-			command = buffer + i;
-			i++;
-		}
-    	cmd = command + 1;
-    	dat = command + 2;
-		char data[3] = {0};
-		strncpy(data, dat, 3);
-
-        switch(*cmd) {
-    	    /*
-    	    Ping device
-    	    Request: >P000\n
-    	    Return : *Pid000\n
-    	    */
-            case 'P': {
-    	        sprintf(temp, "*P%d000", deviceId);
-    	        Serial.println(temp);
-				break;
-            }
-			/*
-        	Get device status:
-        	Request: >S000\n
-        	Return : *SidMLC\n
-        	M  = motor status (0 stopped, 1 running)
-        	L  = light status (0 off, 1 on)
-        	C  = cover status (0 moving, 1 parked, 2 unparked)
-    	    */
-            case 'S': {
-                sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
-                Serial.println(temp);
-				break;
-            }
-            /*
-        	Unpark shutter
-        	Request: >O000\n
-        	Return : *Oid000\n
-    	    */
-            case 'O': {
-        	    sprintf(temp, "*O%d000", deviceId);
-        	    setShutter(UNPARKED);
-        	    Serial.println(temp);
-				break;
-            }
-            /*
-        	Park shutter
-        	Request: >C000\n
-        	Return : *Cid000\n
-    	    */
-            case 'C': {
-        	    sprintf(temp, "*C%d000", deviceId);
-        	    setShutter(PARKED);
-        	    Serial.println(temp);
-				break;
-            }
-    	    /*
-        	Turn light on
-        	Request: >L000\n
-        	Return : *Lid000\n
-    	    */
-            case 'L': {
-				if(coverStatus == PARKED) {
-        	    	analogWrite(LED_PIN, brightness);
-					lightStatus = ON;
-				}
-        	    sprintf(temp, "*L%d000", deviceId);
-        	    Serial.println(temp);
-				break;
-            }
-    	    /*
-        	Turn light off
-        	Request: >D000\n
-        	Return : *Did000\n
-    	    */
-            case 'D': {
-				analogWrite(LED_PIN, 0);
-				lightStatus = OFF;
-        	    sprintf(temp, "*D%d000", deviceId);
-        	    Serial.println(temp);
-				break;
-            }
-    	    /*
-        	Set brightness
-        	Request: >Bxxx\n
-        	xxx = brightness value from 001-255
-        	Return : *Bidxxx\n
-        	xxx = value that brightness was set from 001-255
-    	    */
-            case 'B': {
-        	    brightness = atoi(data);
-				EEPROM.update(BRIGHTNESS_ADDRESS, brightness % 256);
-        	    if(lightStatus == ON && coverStatus == PARKED) {
-        	    	analogWrite(LED_PIN, brightness % 256);
-                }
-        	    sprintf(temp, "*B%d%03d", deviceId, brightness % 256);
-                Serial.println(temp);
-				break;
-            }
-			/*
-        	Set shutter park angle
-        	Request: >Zxxx\n
-        	xxx = angle from 000-360
-        	Return : *Zidxxx\n
-        	xxx = value that park angle was set from 000-360
-    	    */
-            case 'Z': {
-        	    parkAngle = atoi(data);
-				updateInt16EEPROM(PARK_ANGLE_ADDRESS, parkAngle % 360);
-        	    if(coverStatus == PARKED) {
-					moveServo(parkAngle % 1000);
-                }
-        	    sprintf(temp, "*Z%d%03d", deviceId, parkAngle % 360);
-                Serial.println(temp);
-				break;
-            }
-			/*
-        	Set shutter unpark angle
-        	Request: >Axxx\n
-        	xxx = angle from 000-360
-        	Return : *Aidxxx\n
-        	xxx = value that unpark angle was set from 000-360
-    	    */
-            case 'A': {
-        	    unparkAngle = atoi(data);
-				updateInt16EEPROM(UNPARK_ANGLE_ADDRESS, unparkAngle % 360);
-        	    if(coverStatus == UNPARKED) {
-					moveServo(unparkAngle % 1000);
-                }
-        	    sprintf(temp, "*A%d%03d", deviceId, unparkAngle % 360);
-                Serial.println(temp);
-				break;
-            }
-			/*
-        	Get brightness
-        	Request: >J000\n
-        	Return : *Jidxxx\n
-        	xxx = current brightness value from 000-255
-    	    */
-            case 'J': {
-				EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
-                sprintf(temp, "*J%d%03d", deviceId, brightness % 256);
-                Serial.println(temp);
-				break;
-            }
-			/*
-        	Get shutter park angle
-        	Request: >K000\n
-        	Return : *Kidxxx\n
-        	xxx = value that park angle was set from 000-360
-    	    */
-            case 'K': {
-				parkAngle = readInt16EEPROM(PARK_ANGLE_ADDRESS);
-                sprintf(temp, "*K%d%03d", deviceId, parkAngle % 360);
-                Serial.println(temp);
-				break;
-            }
-			/*
-        	Get shutter unpark angle
-        	Request: >H000\n
-        	Return : *Hidxxx\n
-        	xxx = value that unpark angle was set from 000-360
-    	    */
-            case 'H': {
-				unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
-                sprintf(temp, "*H%d%03d", deviceId, unparkAngle % 360);
-                Serial.println(temp);
-				break;
-            }
-    	    /*
-        	Get firmware version
-        	Request: >V000\n
-        	Return : *Vid001\n
-    	    */
-            case 'V': {
-                sprintf(temp, "*V%d001", deviceId);
-                Serial.println(temp);
-				break;
-            }
+    if(Serial.available() < 6) {
+		return;
+	}
+    char* cmd;
+    char* dat;
+    char temp[7];
+    char buffer[20];
+    memset(buffer, 0, 20);
+    Serial.readBytesUntil('\n', buffer, 20);
+	char* command = buffer;
+	int i = 0;
+	while(*command != '>') {
+		command = buffer + i;
+		i++;
+	}
+    cmd = command + 1;
+    dat = command + 2;
+	char data[3] = {0};
+	strncpy(data, dat, 3);
+    switch(*cmd) {
+        /*
+        Ping device
+        Request: >P000\n
+        Return : *Pid000\n
+        */
+        case 'P': {
+            sprintf(temp, "*P%d000", deviceId);
+            Serial.println(temp);
+			break;
         }
-    	while(Serial.available() > 0) {
-    		Serial.read();  
+		/*
+    	Get device status:
+    	Request: >S000\n
+    	Return : *SidMLC\n
+    	M  = motor status (0 stopped, 1 running)
+    	L  = light status (0 off, 1 on)
+    	C  = cover status (0 moving, 1 parked, 2 unparked)
+        */
+        case 'S': {
+            sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
+            Serial.println(temp);
+			break;
         }
+        /*
+    	Unpark shutter
+    	Request: >O000\n
+    	Return : *Oid000\n
+        */
+        case 'O': {
+    	    sprintf(temp, "*O%d000", deviceId);
+    	    setShutter(UNPARKED);
+    	    Serial.println(temp);
+			break;
+        }
+        /*
+    	Park shutter
+    	Request: >C000\n
+    	Return : *Cid000\n
+        */
+        case 'C': {
+    	    sprintf(temp, "*C%d000", deviceId);
+    	    setShutter(PARKED);
+    	    Serial.println(temp);
+			break;
+        }
+        /*
+    	Turn light on
+    	Request: >L000\n
+    	Return : *Lid000\n
+        */
+        case 'L': {
+			if(coverStatus == PARKED) {
+    	    	analogWrite(LED_PIN, brightness);
+				lightStatus = ON;
+			}
+    	    sprintf(temp, "*L%d000", deviceId);
+    	    Serial.println(temp);
+			break;
+        }
+        /*
+    	Turn light off
+    	Request: >D000\n
+    	Return : *Did000\n
+        */
+        case 'D': {
+			analogWrite(LED_PIN, 0);
+			lightStatus = OFF;
+    	    sprintf(temp, "*D%d000", deviceId);
+    	    Serial.println(temp);
+			break;
+        }
+        /*
+    	Set brightness
+    	Request: >Bxxx\n
+    	xxx = brightness value from 001-255
+    	Return : *Bidxxx\n
+    	xxx = value that brightness was set from 001-255
+        */
+        case 'B': {
+    	    brightness = atoi(data);
+			EEPROM.update(BRIGHTNESS_ADDRESS, brightness % 256);
+    	    if(lightStatus == ON && coverStatus == PARKED) {
+    	    	analogWrite(LED_PIN, brightness % 256);
+            }
+    	    sprintf(temp, "*B%d%03d", deviceId, brightness % 256);
+            Serial.println(temp);
+			break;
+        }
+		/*
+    	Set shutter park angle
+    	Request: >Zxxx\n
+    	xxx = angle from 000-360
+    	Return : *Zidxxx\n
+    	xxx = value that park angle was set from 000-360
+        */
+        case 'Z': {
+    	    parkAngle = atoi(data);
+			updateInt16EEPROM(PARK_ANGLE_ADDRESS, parkAngle % 360);
+    	    if(coverStatus == PARKED) {
+				moveServo(parkAngle % 1000);
+            }
+    	    sprintf(temp, "*Z%d%03d", deviceId, parkAngle % 360);
+            Serial.println(temp);
+			break;
+        }
+		/*
+    	Set shutter unpark angle
+    	Request: >Axxx\n
+    	xxx = angle from 000-360
+    	Return : *Aidxxx\n
+    	xxx = value that unpark angle was set from 000-360
+        */
+        case 'A': {
+    	    unparkAngle = atoi(data);
+			updateInt16EEPROM(UNPARK_ANGLE_ADDRESS, unparkAngle % 360);
+    	    if(coverStatus == UNPARKED) {
+				moveServo(unparkAngle % 1000);
+            }
+    	    sprintf(temp, "*A%d%03d", deviceId, unparkAngle % 360);
+            Serial.println(temp);
+			break;
+        }
+		/*
+    	Get brightness
+    	Request: >J000\n
+    	Return : *Jidxxx\n
+    	xxx = current brightness value from 000-255
+        */
+        case 'J': {
+			EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
+            sprintf(temp, "*J%d%03d", deviceId, brightness % 256);
+            Serial.println(temp);
+			break;
+        }
+		/*
+    	Get shutter park angle
+    	Request: >K000\n
+    	Return : *Kidxxx\n
+    	xxx = value that park angle was set from 000-360
+        */
+        case 'K': {
+			parkAngle = readInt16EEPROM(PARK_ANGLE_ADDRESS);
+            sprintf(temp, "*K%d%03d", deviceId, parkAngle % 360);
+            Serial.println(temp);
+			break;
+        }
+		/*
+    	Get shutter unpark angle
+    	Request: >H000\n
+    	Return : *Hidxxx\n
+    	xxx = value that unpark angle was set from 000-360
+        */
+        case 'H': {
+			unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
+            sprintf(temp, "*H%d%03d", deviceId, unparkAngle % 360);
+            Serial.println(temp);
+			break;
+        }
+        /*
+    	Get firmware version
+    	Request: >V000\n
+    	Return : *Vid001\n
+        */
+        case 'V': {
+            sprintf(temp, "*V%d001", deviceId);
+            Serial.println(temp);
+			break;
+        }
+    }
+    while(Serial.available() > 0) {
+    	Serial.read();  
     }
 }
 
