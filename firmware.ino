@@ -103,7 +103,7 @@ void setup() {
 	unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
 	currentServoPosition = parkAngle;
-	coverStatus = EEPROM.get(SHUTTER_STATUS_ADDRESS)
+	coverStatus = EEPROM.get(SHUTTER_STATUS_ADDRESS);
 	while(Serial.available()) {
 		Serial.read();			// clears buffer
 	}
@@ -130,11 +130,11 @@ void moveServo(int angle) {
 }
 
 void updateInt16EEPROM(int address, uint16_t value) {
-	EEPROM.update(address, value);
-	EEPROM.update(address + 1, value >> 8);
+	EEPROM.update(address, (uint8_t)(value >> 8));
+	EEPROM.update(address + 1, (uint8_t)(value & 0xFF));
 }
 uint16_t readInt16EEPROM(int address) {
-	return (EEPROM.read(address + 1) << 8) | EEPROM.read(address);
+	return (EEPROM.read(address) << 8) | EEPROM.read(address + 1);
 }
 
 void handleSerial() {

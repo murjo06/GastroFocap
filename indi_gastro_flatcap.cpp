@@ -16,6 +16,7 @@ static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 #define FLAT_CMD 6
 #define FLAT_RES 8
 #define FLAT_TIMEOUT 5
+#define FLAT_MOTOR_TIMEOUT 10
 
 #define MIN_ANGLE 0.0
 #define MAX_ANGLE 360.0
@@ -199,7 +200,7 @@ bool FlatCap::ping()
     if (!sendCommand(">P000", response))
         return false;
 
-    char productString[3] = { 0 };
+    char productString[3] = {0};
     snprintf(productString, 3, "%s", response + 2);
 
     int rc = sscanf(productString, "%hu", &productID);
@@ -690,6 +691,7 @@ bool FlatCap::sendCommand(const char *command, char *response)
     int nbytes_read = 0, nbytes_written = 0, rc = -1;
     char buffer[FLAT_CMD + 1] = {0};
     char errstr[MAXRBUF] = {0};
+    int timeout = (command[1] == 'O' || command[1] == 'C' || command[1] == 'Z' || command[1] == 'A') ? FLAT_MOTOR_TIMEOUT : FLAT_TIMEOUT
     tcflush(PortFD, TCIOFLUSH);
     if(isSimulation())
     {
@@ -704,7 +706,7 @@ bool FlatCap::sendCommand(const char *command, char *response)
             LOGF_ERROR("%s write error: %s", command, errstr);
             return false;
         }
-        if((rc = tty_nread_section(PortFD, response, FLAT_RES + 1, 0xA, FLAT_TIMEOUT, &nbytes_read)) != TTY_OK)
+        if((rc = tty_nread_section(PortFD, response, FLAT_RES + 1, 0xA, timeout, &nbytes_read)) != TTY_OK)
         {
             tty_error_msg(rc, errstr, MAXRBUF);
             LOGF_ERROR("%s read error: %s", command, errstr);
@@ -714,7 +716,6 @@ bool FlatCap::sendCommand(const char *command, char *response)
 
         return true;
     }
-    return false;
 }
 
 void FlatCap::parkTimeoutHelper(void *context)
