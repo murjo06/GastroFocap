@@ -92,7 +92,7 @@ uint8_t coverStatus = PARKED;
 uint8_t brightness = 0;
 uint16_t parkAngle = 0;
 uint16_t unparkAngle = 0;
-uint16_t currentServoPosition = 0;
+uint16_t servoPosition = 0;
 
 void setup() {
 	servo.attach(SERVO_PIN);
@@ -102,8 +102,8 @@ void setup() {
 	parkAngle = readInt16EEPROM(PARK_ANGLE_ADDRESS);
 	unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
-	currentServoPosition = parkAngle;
 	coverStatus = EEPROM.get(SHUTTER_STATUS_ADDRESS);
+	servoPosition = (coverStatus == PARKED) ? parkAngle : unparkAngle;
 	while(Serial.available()) {
 		Serial.read();			// clears buffer
 	}
@@ -116,15 +116,14 @@ void loop() {
 
 void moveServo(int angle) {
 	motorStatus = RUNNING;
-	long start = millis();
-	int direction = (servoAngle > angle) ? -1 : 1;
-	while(abs(currentServoPosition - angle) >= SERVO_INCREMENT) {
-		currentServoPosition += SERVO_INCREMENT * direction;
-		servo.write(currentServoPosition);
+	int direction = (servoPosition > angle) ? -1 : 1;
+	while(abs(servoPosition - angle) >= SERVO_INCREMENT) {
+		servoPosition += SERVO_INCREMENT * direction;
+		servo.write(servoPosition);
 		delay(SERVO_DELAY);
 	}
 	servo.write(angle);
-	currentServoPosition = angle;
+	servoPosition = angle;
 	delay(SERVO_DELAY);
 	motorStatus = STOPPED;
 }
@@ -340,7 +339,6 @@ void setShutter(int shutter) {
 		analogWrite(LED_PIN, 0);
 		lightStatus = OFF;
 		coverStatus = UNKNOWN;
-		lightStatus = OFF;
 		moveServo(unparkAngle);
 		coverStatus = UNPARKED;
 	} else if(shutter == UNPARKED) {
