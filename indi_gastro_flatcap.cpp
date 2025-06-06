@@ -488,7 +488,7 @@ bool FlatCap::getStatus()
                 if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
                 {
                     ParkCapSP.reset();
-                    ParkCapSP[0].setState(ISS_ON);
+                    ParkCapSP[1].setState(ISS_ON);
                     ParkCapSP.setState(IPS_OK);
                     LOG_INFO("Cover closed.");
                     ParkCapSP.apply();
@@ -500,7 +500,7 @@ bool FlatCap::getStatus()
                 if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
                 {
                     ParkCapSP.reset();
-                    ParkCapSP[1].setState(ISS_ON);
+                    ParkCapSP[0].setState(ISS_ON);
                     ParkCapSP.setState(IPS_OK);
                     LOG_INFO("Cover open.");
                     ParkCapSP.apply();
