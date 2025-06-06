@@ -102,7 +102,7 @@ void setup() {
 	parkAngle = readInt16EEPROM(PARK_ANGLE_ADDRESS);
 	unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
-	coverStatus = EEPROM.get(SHUTTER_STATUS_ADDRESS);
+	coverStatus = EEPROM.read(SHUTTER_STATUS_ADDRESS);
 	servoPosition = (coverStatus == PARKED) ? parkAngle : unparkAngle;
 	while(Serial.available()) {
 		Serial.read();			// clears buffer
@@ -176,7 +176,7 @@ void handleSerial() {
     	C  = cover status (0 moving, 1 parked, 2 unparked)
         */
         case 'S': {
-            sprintf(temp, "*S%02d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
+            sprintf(temp, "*S%02d%01d%01d%01d", deviceId, motorStatus, lightStatus, coverStatus);
             Serial.println(temp);
 			break;
         }
@@ -231,9 +231,9 @@ void handleSerial() {
         /*
     	Set brightness
     	Request: >Bxxx\n
-    	xxx = brightness value from 001-255
+    	xxx = brightness value from 000-255
     	Return : *Bidxxx\n
-    	xxx = value that brightness was set from 001-255
+    	xxx = value that brightness was set from 000-255
         */
         case 'B': {
     	    brightness = atoi(data);
@@ -256,7 +256,7 @@ void handleSerial() {
     	    parkAngle = atoi(data);
 			updateInt16EEPROM(PARK_ANGLE_ADDRESS, parkAngle % 360);
     	    if(coverStatus == PARKED) {
-				moveServo(parkAngle % 1000);
+				moveServo(parkAngle % 360);
             }
     	    sprintf(temp, "*Z%02d%03d", deviceId, parkAngle % 360);
             Serial.println(temp);
@@ -273,7 +273,7 @@ void handleSerial() {
     	    unparkAngle = atoi(data);
 			updateInt16EEPROM(UNPARK_ANGLE_ADDRESS, unparkAngle % 360);
     	    if(coverStatus == UNPARKED) {
-				moveServo(unparkAngle % 1000);
+				moveServo(unparkAngle % 360);
             }
     	    sprintf(temp, "*A%02d%03d", deviceId, unparkAngle % 360);
             Serial.println(temp);
