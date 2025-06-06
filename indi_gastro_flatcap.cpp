@@ -21,7 +21,7 @@ static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 #define MIN_ANGLE 0.0
 #define MAX_ANGLE 360.0
 
-FlatCap::FlatCap() : LightBoxInterface(this), DustCapInterface()
+FlatCap::FlatCap() : LightBoxInterface(this), DustCapInterface(this)
 {
     setVersion(1, 1);
 }
@@ -83,8 +83,6 @@ bool FlatCap::updateProperties()
         defineProperty(&FirmwareTP);
         defineProperty(&AnglesNP);
 
-        updateLightBoxProperties();
-
         getStartupData();
     }
     else
@@ -92,8 +90,6 @@ bool FlatCap::updateProperties()
         deleteProperty(StatusTP.name);
         deleteProperty(FirmwareTP.name);
         deleteProperty(AnglesNP.name);
-
-        updateLightBoxProperties();
     }
 
     return true;
@@ -145,7 +141,7 @@ bool FlatCap::ISNewNumber(const char *dev, const char *name, double values[], ch
         }
         return true;
     }
-    if (processLightBoxNumber(dev, name, values, names, n))
+    if (LI::processNumber(dev, name, values, names, n))
         return true;
 
     return INDI::DefaultDevice::ISNewNumber(dev, name, values, names, n);
@@ -155,7 +151,7 @@ bool FlatCap::ISNewText(const char *dev, const char *name, char *texts[], char *
 {
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
-        if (processLightBoxText(dev, name, texts, names, n))
+        if (LI::processText(dev, name, texts, names, n))
             return true;
     }
 
@@ -166,10 +162,10 @@ bool FlatCap::ISNewSwitch(const char *dev, const char *name, ISState *states, ch
 {
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
-        if (processDustCapSwitch(dev, name, states, names, n))
+        if (DI::processSwitch(dev, name, states, names, n))
             return true;
 
-        if (processLightBoxSwitch(dev, name, states, names, n))
+        if (LI::processSwitch(dev, name, states, names, n))
             return true;
     }
 
@@ -178,7 +174,7 @@ bool FlatCap::ISNewSwitch(const char *dev, const char *name, ISState *states, ch
 
 bool FlatCap::ISSnoopDevice(XMLEle *root)
 {
-    snoopLightBox(root);
+    LI::snoop(root);
 
     return INDI::DefaultDevice::ISSnoopDevice(root);
 }
@@ -187,7 +183,7 @@ bool FlatCap::saveConfigItems(FILE *fp)
 {
     INDI::DefaultDevice::saveConfigItems(fp);
 
-    return LI::saveConfingItems(fp);
+    return LI::saveConfigItems(fp);
 }
 
 bool FlatCap::ping()
@@ -407,7 +403,7 @@ bool FlatCap::EnableLightBox(bool enable)
     char command[FLAT_CMD];
     char response[FLAT_RES];
 
-    if (ParkCapS[1].getState() == ISS_ON)
+    if (ParkCapSP[1].getState() == ISS_ON)
     {
         LOG_ERROR("Cannot control light while cap is unparked.");
         return false;
@@ -442,7 +438,7 @@ bool FlatCap::getStatus()
         if (ParkCapSP.getState() == IPS_BUSY && --simulationWorkCounter <= 0)
         {
             ParkCapSP.setState(IPS_OK);
-            ParkCapSP.apply()
+            ParkCapSP.apply();
             simulationWorkCounter = 0;
         }
 
@@ -455,13 +451,13 @@ bool FlatCap::getStatus()
         {
             response[4] = '0';
             // Parked/Closed
-            if (ParkCapS[CAP_PARK].getState() == ISS_ON)
+            if (ParkCapSP[CAP_PARK].getState() == ISS_ON)
                 response[6] = '1';
             else
                 response[6] = '2';
         }
 
-        response[5] = (LightS[FLAT_LIGHT_ON].getState() == ISS_ON) ? '1' : '0';
+        response[5] = (LightSP[FLAT_LIGHT_ON].getState() == ISS_ON) ? '1' : '0';
     }
     else
     {
@@ -492,10 +488,10 @@ bool FlatCap::getStatus()
                 if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
                 {
                     ParkCapSP.reset();
-                    ParkCapS[0].setState(ISS_ON);
+                    ParkCapSP[0].setState(ISS_ON);
                     ParkCapSP.setState(IPS_OK);
                     LOG_INFO("Cover closed.");
-                    IDSetSwitch(&ParkCapSP, nullptr);
+                    ParkCapSP.apply();
                 }
                 break;
 
@@ -504,10 +500,10 @@ bool FlatCap::getStatus()
                 if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
                 {
                     ParkCapSP.reset();
-                    ParkCapS[1].setState(ISS_ON);
+                    ParkCapSP[1].setState(ISS_ON);
                     ParkCapSP.setState(IPS_OK);
                     LOG_INFO("Cover open.");
-                    IDSetSwitch(&ParkCapSP, nullptr);
+                    ParkCapSP.apply();
                 }
                 break;
 
@@ -596,7 +592,7 @@ void FlatCap::TimerHit()
     // parking or unparking timed out, try again
     if (ParkCapSP.getState() == IPS_BUSY && !strcmp(StatusT[0].text, "Timed out"))
     {
-        if (ParkCapS[0].getState() == ISS_ON)
+        if (ParkCapSP[0].getState() == ISS_ON)
             ParkCap();
         else
             UnParkCap();
