@@ -163,7 +163,7 @@ void handleSerial() {
         Return : *Pid000\n
         */
         case 'P': {
-            sprintf(temp, "*P%d000", deviceId);
+            sprintf(temp, "*P%02d000", deviceId);
             Serial.println(temp);
 			break;
         }
@@ -176,7 +176,7 @@ void handleSerial() {
     	C  = cover status (0 moving, 1 parked, 2 unparked)
         */
         case 'S': {
-            sprintf(temp, "*S%d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
+            sprintf(temp, "*S%02d%d%d%d", deviceId, motorStatus, lightStatus, coverStatus);
             Serial.println(temp);
 			break;
         }
@@ -186,7 +186,7 @@ void handleSerial() {
     	Return : *Oid000\n
         */
         case 'O': {
-    	    sprintf(temp, "*O%d000", deviceId);
+    	    sprintf(temp, "*O%02d000", deviceId);
     	    setShutter(UNPARKED);
     	    Serial.println(temp);
 			break;
@@ -197,7 +197,7 @@ void handleSerial() {
     	Return : *Cid000\n
         */
         case 'C': {
-    	    sprintf(temp, "*C%d000", deviceId);
+    	    sprintf(temp, "*C%02d000", deviceId);
     	    setShutter(PARKED);
     	    Serial.println(temp);
 			break;
@@ -212,7 +212,7 @@ void handleSerial() {
     	    	analogWrite(LED_PIN, brightness);
 				lightStatus = ON;
 			}
-    	    sprintf(temp, "*L%d000", deviceId);
+    	    sprintf(temp, "*L%02d000", deviceId);
     	    Serial.println(temp);
 			break;
         }
@@ -224,7 +224,7 @@ void handleSerial() {
         case 'D': {
 			analogWrite(LED_PIN, 0);
 			lightStatus = OFF;
-    	    sprintf(temp, "*D%d000", deviceId);
+    	    sprintf(temp, "*D%02d000", deviceId);
     	    Serial.println(temp);
 			break;
         }
@@ -241,7 +241,7 @@ void handleSerial() {
     	    if(lightStatus == ON && coverStatus == PARKED) {
     	    	analogWrite(LED_PIN, brightness % 256);
             }
-    	    sprintf(temp, "*B%d%03d", deviceId, brightness % 256);
+    	    sprintf(temp, "*B%02d%03d", deviceId, brightness % 256);
             Serial.println(temp);
 			break;
         }
@@ -258,7 +258,7 @@ void handleSerial() {
     	    if(coverStatus == PARKED) {
 				moveServo(parkAngle % 1000);
             }
-    	    sprintf(temp, "*Z%d%03d", deviceId, parkAngle % 360);
+    	    sprintf(temp, "*Z%02d%03d", deviceId, parkAngle % 360);
             Serial.println(temp);
 			break;
         }
@@ -275,7 +275,7 @@ void handleSerial() {
     	    if(coverStatus == UNPARKED) {
 				moveServo(unparkAngle % 1000);
             }
-    	    sprintf(temp, "*A%d%03d", deviceId, unparkAngle % 360);
+    	    sprintf(temp, "*A%02d%03d", deviceId, unparkAngle % 360);
             Serial.println(temp);
 			break;
         }
@@ -287,7 +287,7 @@ void handleSerial() {
         */
         case 'J': {
 			EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
-            sprintf(temp, "*J%d%03d", deviceId, brightness % 256);
+            sprintf(temp, "*J%02d%03d", deviceId, brightness % 256);
             Serial.println(temp);
 			break;
         }
@@ -299,7 +299,7 @@ void handleSerial() {
         */
         case 'K': {
 			parkAngle = readInt16EEPROM(PARK_ANGLE_ADDRESS);
-            sprintf(temp, "*K%d%03d", deviceId, parkAngle % 360);
+            sprintf(temp, "*K%02d%03d", deviceId, parkAngle % 360);
             Serial.println(temp);
 			break;
         }
@@ -311,7 +311,7 @@ void handleSerial() {
         */
         case 'H': {
 			unparkAngle = readInt16EEPROM(UNPARK_ANGLE_ADDRESS);
-            sprintf(temp, "*H%d%03d", deviceId, unparkAngle % 360);
+            sprintf(temp, "*H%02d%03d", deviceId, unparkAngle % 360);
             Serial.println(temp);
 			break;
         }
@@ -321,7 +321,7 @@ void handleSerial() {
     	Return : *Vid001\n
         */
         case 'V': {
-            sprintf(temp, "*V%d001", deviceId);
+            sprintf(temp, "*V%02d001", deviceId);
             Serial.println(temp);
 			break;
         }
