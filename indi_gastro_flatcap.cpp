@@ -21,7 +21,7 @@ static std::unique_ptr<FlatCap> flatcap(new FlatCap());
 #define MIN_ANGLE 0.0
 #define MAX_ANGLE 360.0
 
-FlatCap::FlatCap() : LightBoxInterface(this, true), DustCapInterface()
+FlatCap::FlatCap() : LightBoxInterface(this), DustCapInterface()
 {
     setVersion(1, 1);
 }
@@ -43,12 +43,12 @@ bool FlatCap::initProperties()
 
     IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
-    initDustCapProperties(getDeviceName(), MAIN_CONTROL_TAB);
-    initLightBoxProperties(getDeviceName(), MAIN_CONTROL_TAB);
+    DI::initProperties(MAIN_CONTROL_TAB);
+    LI::initProperties(MAIN_CONTROL_TAB, CAN_DIM);
 
-    LightIntensityN[0].min  = 1.0;
-    LightIntensityN[0].max  = 255.0;
-    LightIntensityN[0].step = 5.0;
+    LightIntensityNP[0].setMin(1);
+    LightIntensityNP[0].setMax(256);
+    LightIntensityNP[0].setStep(5);
 
     setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
 
@@ -67,18 +67,18 @@ bool FlatCap::initProperties()
 void FlatCap::ISGetProperties(const char *dev)
 {
     INDI::DefaultDevice::ISGetProperties(dev);
-    isGetLightBoxProperties(dev);
+    LI::ISGetProperties(dev);
 }
 
 bool FlatCap::updateProperties()
 {
     INDI::DefaultDevice::updateProperties();
 
+    DI::updateProperties();
+    LI::updateProperties();
+
     if (isConnected())
     {
-        defineProperty(&ParkCapSP);
-        defineProperty(&LightSP);
-        defineProperty(&LightIntensityNP);
         defineProperty(&StatusTP);
         defineProperty(&FirmwareTP);
         defineProperty(&AnglesNP);
@@ -89,9 +89,6 @@ bool FlatCap::updateProperties()
     }
     else
     {
-        deleteProperty(ParkCapSP.name);
-        deleteProperty(LightSP.name);
-        deleteProperty(LightIntensityNP.name);
         deleteProperty(StatusTP.name);
         deleteProperty(FirmwareTP.name);
         deleteProperty(AnglesNP.name);
@@ -190,7 +187,7 @@ bool FlatCap::saveConfigItems(FILE *fp)
 {
     INDI::DefaultDevice::saveConfigItems(fp);
 
-    return saveLightBoxConfigItems(fp);
+    return LI::saveConfingItems(fp);
 }
 
 bool FlatCap::ping()
@@ -410,7 +407,7 @@ bool FlatCap::EnableLightBox(bool enable)
     char command[FLAT_CMD];
     char response[FLAT_RES];
 
-    if (ParkCapS[1].s == ISS_ON)
+    if (ParkCapS[1].getState() == ISS_ON)
     {
         LOG_ERROR("Cannot control light while cap is unparked.");
         return false;
@@ -442,14 +439,14 @@ bool FlatCap::getStatus()
 
     if (isSimulation())
     {
-        if (ParkCapSP.s == IPS_BUSY && --simulationWorkCounter <= 0)
+        if (ParkCapSP.getState() == IPS_BUSY && --simulationWorkCounter <= 0)
         {
-            ParkCapSP.s = IPS_OK;
-            IDSetSwitch(&ParkCapSP, nullptr);
+            ParkCapSP.setState(IPS_OK);
+            ParkCapSP.apply()
             simulationWorkCounter = 0;
         }
 
-        if (ParkCapSP.s == IPS_BUSY)
+        if (ParkCapSP.getState() == IPS_BUSY)
         {
             response[4] = '1';
             response[6] = '0';
@@ -458,13 +455,13 @@ bool FlatCap::getStatus()
         {
             response[4] = '0';
             // Parked/Closed
-            if (ParkCapS[CAP_PARK].s == ISS_ON)
+            if (ParkCapS[CAP_PARK].getState() == ISS_ON)
                 response[6] = '1';
             else
                 response[6] = '2';
         }
 
-        response[5] = (LightS[FLAT_LIGHT_ON].s == ISS_ON) ? '1' : '0';
+        response[5] = (LightS[FLAT_LIGHT_ON].getState() == ISS_ON) ? '1' : '0';
     }
     else
     {
@@ -492,11 +489,11 @@ bool FlatCap::getStatus()
 
             case 1:
                 IUSaveText(&StatusT[0], "Closed");
-                if (ParkCapSP.s == IPS_BUSY || ParkCapSP.s == IPS_IDLE)
+                if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
                 {
-                    IUResetSwitch(&ParkCapSP);
-                    ParkCapS[0].s = ISS_ON;
-                    ParkCapSP.s   = IPS_OK;
+                    ParkCapSP.reset();
+                    ParkCapS[0].setState(ISS_ON);
+                    ParkCapSP.setState(IPS_OK);
                     LOG_INFO("Cover closed.");
                     IDSetSwitch(&ParkCapSP, nullptr);
                 }
@@ -504,11 +501,11 @@ bool FlatCap::getStatus()
 
             case 2:
                 IUSaveText(&StatusT[0], "Open");
-                if (ParkCapSP.s == IPS_BUSY || ParkCapSP.s == IPS_IDLE)
+                if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
                 {
-                    IUResetSwitch(&ParkCapSP);
-                    ParkCapS[1].s = ISS_ON;
-                    ParkCapSP.s   = IPS_OK;
+                    ParkCapSP.reset();
+                    ParkCapS[1].setState(ISS_ON);
+                    ParkCapSP.setState(IPS_OK);
                     LOG_INFO("Cover open.");
                     IDSetSwitch(&ParkCapSP, nullptr);
                 }
@@ -530,22 +527,16 @@ bool FlatCap::getStatus()
         {
             case 0:
                 IUSaveText(&StatusT[1], "Off");
-                if (LightS[0].s == ISS_ON)
-                {
-                    LightS[0].s = ISS_OFF;
-                    LightS[1].s = ISS_ON;
-                    IDSetSwitch(&LightSP, nullptr);
-                }
+                LightSP[1].setState(ISS_ON);
+                LightSP[0].setState(ISS_OFF);
+                LightSP.apply();
                 break;
 
             case 1:
                 IUSaveText(&StatusT[1], "On");
-                if (LightS[1].s == ISS_ON)
-                {
-                    LightS[0].s = ISS_ON;
-                    LightS[1].s = ISS_OFF;
-                    IDSetSwitch(&LightSP, nullptr);
-                }
+                LightSP[0].setState(ISS_ON);
+                LightSP[1].setState(ISS_OFF);
+                LightSP.apply();
                 break;
         }
     }
@@ -603,9 +594,9 @@ void FlatCap::TimerHit()
     getStatus();
 
     // parking or unparking timed out, try again
-    if (ParkCapSP.s == IPS_BUSY && !strcmp(StatusT[0].text, "Timed out"))
+    if (ParkCapSP.getState() == IPS_BUSY && !strcmp(StatusT[0].text, "Timed out"))
     {
-        if (ParkCapS[0].s == ISS_ON)
+        if (ParkCapS[0].getState() == ISS_ON)
             ParkCap();
         else
             UnParkCap();
@@ -640,8 +631,8 @@ bool FlatCap::getBrightness()
     if (brightnessValue != prevBrightness)
     {
         prevBrightness = brightnessValue;
-        LightIntensityN[0].value = brightnessValue;
-        IDSetNumber(&LightIntensityNP, nullptr);
+        LightIntensityNP[0].setValue(brightnessValue);
+        LightIntensityNP.apply();
     }
     
     return true;
@@ -651,8 +642,8 @@ bool FlatCap::SetLightBoxBrightness(uint16_t value)
 {
     if (isSimulation())
     {
-        LightIntensityN[0].value = value;
-        IDSetNumber(&LightIntensityNP, nullptr);
+        LightIntensityNP[0].setValue(value);
+        LightIntensityNP.apply();
         return true;
     }
 
@@ -679,8 +670,8 @@ bool FlatCap::SetLightBoxBrightness(uint16_t value)
     if (brightnessValue != prevBrightness)
     {
         prevBrightness = brightnessValue;
-        LightIntensityN[0].value = brightnessValue;
-        IDSetNumber(&LightIntensityNP, nullptr);
+        LightIntensityNP[0].setValue(brightnessValue);
+        LightIntensityNP.apply();
     }
 
     return true;
@@ -691,7 +682,7 @@ bool FlatCap::sendCommand(const char *command, char *response)
     int nbytes_read = 0, nbytes_written = 0, rc = -1;
     char buffer[FLAT_CMD + 1] = {0};
     char errstr[MAXRBUF] = {0};
-    int timeout = (command[1] == 'O' || command[1] == 'C' || command[1] == 'Z' || command[1] == 'A') ? FLAT_MOTOR_TIMEOUT : FLAT_TIMEOUT
+    int timeout = (command[1] == 'O' || command[1] == 'C' || command[1] == 'Z' || command[1] == 'A') ? FLAT_MOTOR_TIMEOUT : FLAT_TIMEOUT;
     tcflush(PortFD, TCIOFLUSH);
     if(isSimulation())
     {
@@ -730,7 +721,7 @@ void FlatCap::unparkTimeoutHelper(void *context)
 
 void FlatCap::parkTimeout()
 {
-    if (ParkCapSP.s == IPS_BUSY)
+    if (ParkCapSP.getState() == IPS_BUSY)
     {
         LOG_WARN("Parking cap timed out. Retrying...");
         ParkCap();
@@ -739,7 +730,7 @@ void FlatCap::parkTimeout()
 
 void FlatCap::unparkTimeout()
 {
-    if (ParkCapSP.s == IPS_BUSY)
+    if (ParkCapSP.getState() == IPS_BUSY)
     {
         LOG_WARN("UnParking cap timed out. Retrying...");
         UnParkCap();
