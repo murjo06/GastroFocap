@@ -46,8 +46,8 @@ bool FlatCap::initProperties()
     DI::initProperties(MAIN_CONTROL_TAB);
     LI::initProperties(MAIN_CONTROL_TAB, CAN_DIM);
 
-    LightIntensityNP[0].setMin(1);
-    LightIntensityNP[0].setMax(256);
+    LightIntensityNP[0].setMin(0);
+    LightIntensityNP[0].setMax(255);
     LightIntensityNP[0].setStep(5);
 
     setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
