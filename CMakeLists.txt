@@ -13,6 +13,9 @@ find_package(Nova REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(GSL REQUIRED)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 # these will be used to set the version number in config.h and our driver's xml file
 set(CDRIVER_VERSION_MAJOR 1)
 set(CDRIVER_VERSION_MINOR 1)
