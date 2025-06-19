@@ -339,12 +339,11 @@ void setShutter(int shutter) {
 		analogWrite(LED_PIN, 0);
 		lightStatus = OFF;
 		coverStatus = UNKNOWN;
-		moveServo(unparkAngle);
-		coverStatus = UNPARKED;
+		moveServo(parkAngle);
 	} else if(shutter == UNPARKED) {
 		coverStatus = UNKNOWN;
-		moveServo(parkAngle);
-		coverStatus = PARKED;
+		moveServo(unparkAngle);
 	}
+	coverStatus = shutter;
 	EEPROM.update(SHUTTER_STATUS_ADDRESS, shutter);
 }

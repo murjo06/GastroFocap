@@ -38,8 +38,8 @@ bool FlatCap::initProperties()
     IUFillText(&FirmwareT[0], "VERSION", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillNumber(&AnglesN[0], "PARK_ANGLE", "Park", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 270.0);
-    IUFillNumber(&AnglesN[1], "UNPARK_ANGLE", "Unpark", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 0);
+    IUFillNumber(&AnglesN[0], "PARK_ANGLE", "Park", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 0.0);
+    IUFillNumber(&AnglesN[1], "UNPARK_ANGLE", "Unpark", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 270.0);
 
     IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
 
