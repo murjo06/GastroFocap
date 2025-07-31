@@ -1,50 +1,3 @@
-/*
-Arduino Nano firmware using Alnitak protocol
-
-Code adapted from https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDLightBoxAlnitak.ino
-
-The host (INDI server) sends commands starting with >, this firmware responds with *
-
-Send     : >P000#      // ping
-Recieve  : *Pid000#    // confirm
-
-Send     : >S000#      // request state
-Recieve  : *Sid000#    // returned state
-
-Send     : >O000#      // unpark shutter
-Recieve  : *Oid000#    // confirm
-
-Send     : >C000#      // park shutter
-Recieve  : *Cid000#    // confirm
-
-Send     : >L000#      // turn light on (uses set brightness value)
-Recieve  : *Lid000<    // confirm
-
-Send     : >D000#      // turn light off (brightness value should not be changed)
-Recieve  : *Did000<    // confirm
-
-Send     : >Bxxx#      // set brightness to xxx
-Recieve  : *Bidxxx<    // confirm
-
-Send     : >Zxxx#		// set parked angle to xxx
-Recieve	 : *Zidxxx<		// confirm
-
-Send     : >Axxx#		// set unpark angle to xxx
-Recieve	 : *Aidxxx<		// confirm
-
-Send     : >J000#      // get brightness
-Recieve  : *Bidxxx<    // returned brightness
-
-Send     : >Hxxx#		// get park angle
-Recieve	 : *Hidxxx<		// returned angle
-
-Send     : >Kxxx#		// get unpark angle
-Recieve	 : *Kidxxx<		// returned angle
-
-Send     : >Vxxx#		// get firmware version
-Recieve	 : *Vidxxx<		// returned firmware verison
-*/
-
 #include <s3servo.h>
 #include <AccelStepper.h>
 #include <OneWire.h>
@@ -62,26 +15,25 @@ Recieve	 : *Vidxxx<		// returned firmware verison
 
 #define BUFFER_SIZE 40
 
-#define LED 5
-#define SERVO 9
+#define LED 2
+#define SERVO 38
 
 #define SDA 37
 #define SCL 36
+#define EEPROM_WC 35				// write control for M24C64, drive high to prevent writing
 #define EEPROM_ADDRESS 0b1010000
 
-// TMC2209 pinout
-
-#define EN 2						// Enable
-#define DIR 3						// Direction
-#define STEP 4						// Step
-#define TX 6						// SoftwareSerial receive pin 
-#define RX 7						// SoftwareSerial transmit pin
+#define EN 17						// enable
+#define DIR 15						// direction
+#define STEP 16						// step
+#define TX 8						// receive pin 
+#define RX 18						// transmit pin
 #define DRIVER_ADDRESS 0b00 		// TMC2209 driver address according to MS1 and MS2
 #define R_SENSE 0.1f				// my board uses R100 resistors because of the JLC parts library
 
-#define RMS_CURRENT 800
+#define RMS_CURRENT 600
 
-#define TEMP_PIN 8
+#define TEMP_PIN 13
 
 #define PERIOD_US 2000				// at most 1 / STEPPER_SPEED
 
