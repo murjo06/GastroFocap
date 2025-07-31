@@ -12,10 +12,13 @@ sudo make install
 
 ### Uploading the firmware
 
-Upload the [firmware.ino](firmware/firmware.ino) file to an Arduino Nano.
+Upload the [esp32.ino](esp32.ino) file to an ESP32 S3. If your module has PSRAM, you'll have to change the pins, since the PSRAM uses pins 35, 36, and 37 on the S3.
 
 
-The firmware uses the Arduino EEPROM, which is limited to about 100000 read/write cycles, so it is advised to change the exposure length of flats, instead of changing the brightness of the panel when using different fiters.
+Alternatively, you can use an Arduino Nano and upload the [arduino.ino](arduino.ino) file, but this only contains flatcap functionality.
 
 
-If you have to use exposure times of about 1/250 s or less (ideally never go this low), you should increase the PWM frequency of the LED pin (pins 5 and 6 have 980 Hz, you want at least a few full PWM cycles for each flat, but it can get corrected when stacking. Mathematically the frequency doesn't matter if you use median stacking, but I wouldn't recommend using too short exposure times).
+This firmware uses the M24C64 EEPROM IC by default, but that can be changed to use the ESP32 S3's own "EEPROM", although I don't reccomend it. Since EEPROM has limited write cycles (to be fair that's about 4 million for the M24C64), it's best to change the exposure length of flats through different filters, rather than changing the brightness value for each filter.
+
+
+The communication protocol requests and responses are located in [communications.md](communication.md).
