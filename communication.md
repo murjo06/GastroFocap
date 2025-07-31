@@ -1,5 +1,5 @@
 | Driver request, firmware response		| Explenation
-:-
+| -										| -
 | >P000#, *Pid000#						| ping, confirm
 | >S000#, *Sid000#						| request state, returned state
 | >O000#, *Oid000#						| unpark shutter, confirm
