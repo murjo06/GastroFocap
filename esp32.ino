@@ -306,10 +306,6 @@ void focuserCommand(String command) {
 	if (param.length()) {
 		return;
 	}
-	// LED backlight value, always return "00"
-	if (cmd.equalsIgnoreCase("GB")) {
-		Serial.print("00#");
-	}
 	// home the motor, hard-coded, ignore parameters since we only have one motor
 	if (cmd.equalsIgnoreCase("PH")) {
 		stepper.setCurrentPosition(8000);
