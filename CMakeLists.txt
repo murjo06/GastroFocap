@@ -1,5 +1,5 @@
 # define the project name
-project(indi-gastro-flatcap C CXX)
+project(indi-gastro-focap C CXX)
 cmake_minimum_required(VERSION 2.8)
 
 include(GNUInstallDirs)
@@ -28,8 +28,8 @@ configure_file(
 
 # do the replacement in the driver's xml file
 configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/indi_gastro_flatcap.xml.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_flatcap.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/indi_gastro_focap.xml.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml
 )
 
 # set our include directories to look for header files
@@ -43,24 +43,24 @@ include(CMakeCommon)
 
 # tell cmake to build our executable
 add_executable(
-    indi_gastro_flatcap
-    indi_gastro_flatcap.cpp
+    indi_gastro_focap
+    indi_gastro_focap.cpp
 )
 
 # and link it to these libraries
 target_link_libraries(
-    indi_gastro_flatcap
+    indi_gastro_focap
     ${INDI_LIBRARIES}
     ${NOVA_LIBRARIES}
     ${GSL_LIBRARIES}
 )
 
 # tell cmake where to install our executable
-install(TARGETS indi_gastro_flatcap RUNTIME DESTINATION bin)
+install(TARGETS indi_gastro_focap RUNTIME DESTINATION bin)
 
 # and where to put the driver's xml file.
 install(
     FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_flatcap.xml
+    ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml
     DESTINATION ${INDI_DATA_DIR}
 )

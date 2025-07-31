@@ -104,6 +104,7 @@ void setup() {
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
 	coverStatus = EEPROM.read(SHUTTER_STATUS_ADDRESS);
 	servoPosition = (coverStatus == PARKED) ? parkAngle : unparkAngle;
+    servo.write(servoPosition);
 	while(Serial.available()) {
 		Serial.read();			// clears buffer
 	}
