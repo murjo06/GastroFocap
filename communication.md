@@ -1,44 +1,13 @@
-Arduino Nano firmware using Alnitak protocol
-
-Code adapted from (here)[https://github.com/jwellman80/ArduinoLightbox/blob/master/LEDLightBoxAlnitak.ino]
-
-The host (INDI server) sends commands starting with >, this firmware responds with *
-
-| Send		| >P000#	| ping
-Recieve		*Pid000#	confirm
-
-| Send		| >S000#	| request state
-Recieve		*Sid000#	returned state
-
-| Send		| >O000#	| unpark shutter
-| Recieve	| *Oid000#	| confirm
-
-| Send		| >C000#	| park shutter
-| Recieve	| *Cid000#	| confirm
-
-| Send		| >L000#	| turn light on (uses set brightness value)
-| Recieve	| *Lid000<	| confirm
-| :-		| :-
-| Send		| >D000#	| turn light off (brightness value should not be changed)
-| Recieve	| *Did000<	| confirm
-| :-		| :-
-| Send		| >Bxxx#	| set brightness to xxx
-| Recieve	| *Bidxxx<	| confirm
-| :-		| :-
-| Send		| >Zxxx#	| set parked angle to xxx
-| Recieve	| *Zidxxx<	| confirm
-| :-
-| Send		| >Axxx#	| set unpark angle to xxx
-| Recieve	| *Aidxxx<	| confirm
-| :-
-| Send		| >J000#	| get brightness
-| Recieve	| *Bidxxx<	| returned brightness
-| :-
-| Send		| >Hxxx#	| get park angle
-| Recieve	| *Hidxxx<	| returned angle
-| :-
-| Send		| >Kxxx#	| get unpark angle
-| Recieve	| *Kidxxx<	| returned angle
-| :-
-| Send		| >Vxxx#	| get firmware version
-| Recieve	| *Vidxxx<	| returned firmware verison
+| >P000#, *Pid000#	| ping, confirm
+| >S000#, *Sid000#	| request state, returned state
+| >O000#, *Oid000#	| unpark shutter, confirm
+| >C000#, *Cid000#	| park shutter, confirm
+| >L000#, *Lid000#	| turn light on (uses set brightness value), confirm
+| >D000#, *Did000#	| turn light off (brightness value should not be changed), confirm
+| >Bxxx#, *Bidxxx#	| set brightness to xxx, confirm
+| >Zxxx#, *Zidxxx#	| set parked angle to xxx, confirm
+| >Axxx#, *Aidxxx#	| set unpark angle to xxx, confirm
+| >J000#, *Bidxxx#	| get brightness, returned brightness
+| >Hxxx#, *Hidxxx#	| get park angle, returned angle
+| >Kxxx#, *Kidxxx#	| get unpark angle, returned angle
+| >Vxxx#, *Vidxxx#	| get firmware version, returned firmware verison
