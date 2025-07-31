@@ -5,17 +5,17 @@ Code adapted from (here)[https://github.com/jwellman80/ArduinoLightbox/blob/mast
 The host (INDI server) sends commands starting with >, this firmware responds with *
 
 | Send		| >P000#	| ping
-| Recieve	| *Pid000#	| confirm
-| :-		| :-		| :-
+Recieve		*Pid000#	confirm
+
 | Send		| >S000#	| request state
-| Recieve	| *Sid000#	| returned state
-| :-		| :-		| :-
+Recieve		*Sid000#	returned state
+
 | Send		| >O000#	| unpark shutter
 | Recieve	| *Oid000#	| confirm
-| :-		| :-		| :-
+
 | Send		| >C000#	| park shutter
 | Recieve	| *Cid000#	| confirm
-| :-		| :-		| :-
+
 | Send		| >L000#	| turn light on (uses set brightness value)
 | Recieve	| *Lid000<	| confirm
 | :-		| :-
