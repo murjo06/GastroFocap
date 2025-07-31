@@ -1,4 +1,4 @@
-# Gastro Flatcap INDI driver with Arduino Nano firmware
+# Gastro Focap INDI driver with firmware
 
 ### Installing the INDI driver
 ```sh
