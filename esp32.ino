@@ -647,6 +647,8 @@ long hexstr2long(String line) {
     return strtol(buf, NULL, 16);
 }
 
+#ifdef EXTERNAL_EEPROM
+
 void eepromWriteByte(unsigned int address, byte data) {
 	if(eepromReadByte(address) == data) {
 		return;
@@ -684,3 +686,5 @@ long eepromReadLong(unsigned int address, int length) {
 	}
 	return (long)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
 }
+
+#endif
