@@ -33,7 +33,7 @@
 
 #define RMS_CURRENT 600
 
-#define TEMP_PIN 13
+#define TEMP 13
 
 #define PERIOD_US 2000				// at most 1 / STEPPER_SPEED
 
@@ -90,7 +90,7 @@ AccelStepper stepper(AccelStepper::DRIVER, STEP, DIR);
 
 TMC2209Stepper TMCdriver(&Serial2, R_SENSE, DRIVER_ADDRESS);
 
-OneWire oneWire(TEMP_PIN);
+OneWire oneWire(TEMP);
 DallasTemperature sensors(&oneWire);
 
 float tCoeff = 0;
@@ -108,8 +108,7 @@ void setup() {
     pinMode(EN, OUTPUT);
 	pinMode(STEP, OUTPUT);
 	pinMode(DIR, OUTPUT);
-	pinMode(TX, OUTPUT);
-	pinMode(RX, INPUT);
+	pinMode(SERVO, OUTPUT);
 	#ifndef EXTERNAL_EEPROM
 	EEPROM.begin(10);
 	EEPROM.get(PARK_ANGLE_ADDRESS, parkAngle);

@@ -1,6 +1,6 @@
 ## Gastro Focap communication protocol
 
-The protocol is split into two "parts", one for the flatcap and one for the focuser. The flatcap protocol is based on the Alnitak flip-flat protocol, while the focuser is based on the Moonlite focuser. To differenciate between the flatcap and focuser commands, the protocol uses the char `>` as a begin condition for the flatcap and the char `:` for the focuser. The terminating character is `#` for both.
+The protocol is split into two "parts", one for the flatcap and one for the focuser. The flatcap protocol is based on the Alnitak flip-flat protocol, while the focuser is based on the Moonlite focuser. To differenciate between flatcap and focuser commands, the protocol uses the char `>` as a begin condition for the flatcap and the char `:` for the focuser. The terminating character is `#` for both.
 
 #### Commands for the flatcap:
 
