@@ -118,11 +118,11 @@ void setup() {
 	EEPROM.get(FOCUSER_POSITION, currentPosition);
 	#else
 	Wire.begin(SDA, SCL);
-	parkAngle = eepromReadLong(PARK_ANGLE_ADDRESS, 2);
-	unparkAngle = eepromReadLong(UNPARK_ANGLE_ADDRESS, 2);
-	brightness = eepromReadByte(BRIGHTNESS_ADDRESS);
-	coverStatus = eepromReadByte(SHUTTER_STATUS_ADDRESS);
-	currentPosition = eepromReadLong(FOCUSER_POSITION, 4);
+	parkAngle = (uint16_t)eepromReadLong(PARK_ANGLE_ADDRESS, 2);
+	unparkAngle = (uint16_t)eepromReadLong(UNPARK_ANGLE_ADDRESS, 2);
+	brightness = (uint8_t)eepromReadByte(BRIGHTNESS_ADDRESS);
+	coverStatus = (uint8_t)eepromReadByte(SHUTTER_STATUS_ADDRESS);
+	currentPosition = (unsigned long)eepromReadLong(FOCUSER_POSITION, 4);
 	#endif
 	servo.attach(SERVO);
 	servoPosition = (coverStatus == PARKED) ? parkAngle : unparkAngle;
