@@ -181,9 +181,6 @@ void setup() {
 	if(sensors.getDeviceCount()) {
         delay(5);
     }
-	if(Serial.available()) {
-		Serial.read();
-	}
 
 	stepperTicker.attach_ms(2, stepperRun);
 }
@@ -267,27 +264,18 @@ void focuserCommand(char* command) {
 	if(cmd.equalsIgnoreCase("GV")) {
 		Serial.print("10#");
 	}
-	// Initiate a temperature conversion the conversion
-	// process takes a maximum of 750 milliseconds. The
-	// value returned by the :GT# command will not be
-	// valid until the conversion process completes.
-	if(cmd.equalsIgnoreCase("C")) {
-		// Serial.print("10#");
-	}
 	// get the current motor position
 	if(cmd.equalsIgnoreCase("GP")) {
 		currentPosition = stepper.currentPosition();
 		char tempString[6];
-		sprintf(tempString, "%04lX", currentPosition);
+		sprintf(tempString, "%04lX#", currentPosition);
 		Serial.print(tempString);
-		Serial.print("#");
 	}
 	// get the new motor position (target)
 	if(cmd.equalsIgnoreCase("GN")) {
 		char tempString[6];
-		sprintf(tempString, "%04lX", targetPosition);
+		sprintf(tempString, "%04lX#", targetPosition);
 		Serial.print(tempString);
-		Serial.print("#");
 	}
 	// get the current temperature from DS1820 temperature sensor
 	if(cmd.equalsIgnoreCase("GT")) {
@@ -296,18 +284,13 @@ void focuserCommand(char* command) {
 		if(temperature > 100 || temperature < -50) {
 			temperature = 0;
 		}
-		// convert to 16bit hex number
-		// INDI reads temp via static_cast<int16_t>(temp) / 2.0;
-		// so multiply temperature by 2 and cast to int16
 		int16_t t_int = (int16_t)(temperature * 2);
 		char tempString[5];
-		sprintf(tempString, "%04X", (int16_t)t_int);
+		sprintf(tempString, "%04X#", (int16_t)t_int);
 		Serial.print(tempString);
-		Serial.print('#');
 	}
 	// get the temperature coefficient
 	if(cmd.equalsIgnoreCase("GC")) {
-		// Serial.print("02#");
 		Serial.print((byte)tCoeff, HEX);
 		Serial.print('#');
 	}
@@ -321,7 +304,6 @@ void focuserCommand(char* command) {
 		} else {
 			tCoeff = strtol(param.c_str(), NULL, 16) / 2.0f;
 		}
-		// Serial.print("02#");
 	}
 	// motor is moving - 01 if moving, 00 otherwise
 	if(cmd.equalsIgnoreCase("GI")) {
@@ -339,10 +321,7 @@ void focuserCommand(char* command) {
 	}
 	// set new motor position
 	if(cmd.equalsIgnoreCase("SN")) {
-		// Serial.println(param);
 		targetPosition = hexstr2long(param);
-		// Serial.println(targetPosition);
-		// stepper.moveTo(pos);
 	}
 	// initiate a move
 	if(cmd.equalsIgnoreCase("FG")) {
@@ -391,8 +370,8 @@ void flatcapCommand(char* command) {
         Return : *Pid000#
         */
         case 'P': {
-            sprintf(temp, "*P%02d000", deviceId);
-            Serial.println(temp);
+            sprintf(temp, "*P%02d000#", deviceId);
+            Serial.print(temp);
 			break;
         }
 		/*
@@ -404,8 +383,8 @@ void flatcapCommand(char* command) {
     	C  = cover status (0 moving, 1 parked, 2 unparked)
         */
         case 'S': {
-            sprintf(temp, "*S%02d%01d%01d%01d", deviceId, motorStatus, lightStatus, coverStatus);
-            Serial.println(temp);
+            sprintf(temp, "*S%02d%01d%01d%01d#", deviceId, motorStatus, lightStatus, coverStatus);
+            Serial.print(temp);
 			break;
         }
         /*
@@ -415,8 +394,8 @@ void flatcapCommand(char* command) {
         */
         case 'O': {
     	    setShutter(UNPARKED);
-			sprintf(temp, "*O%02d000", deviceId);
-    	    Serial.println(temp);
+			sprintf(temp, "*O%02d000#", deviceId);
+    	    Serial.print(temp);
 			break;
         }
         /*
@@ -426,8 +405,8 @@ void flatcapCommand(char* command) {
         */
         case 'C': {
     	    setShutter(PARKED);
-			sprintf(temp, "*C%02d000", deviceId);
-    	    Serial.println(temp);
+			sprintf(temp, "*C%02d000#", deviceId);
+    	    Serial.print(temp);
 			break;
         }
         /*
@@ -440,8 +419,8 @@ void flatcapCommand(char* command) {
     	    	ledcWrite(LED, brightness);
 				lightStatus = ON;
 			}
-    	    sprintf(temp, "*L%02d000", deviceId);
-    	    Serial.println(temp);
+    	    sprintf(temp, "*L%02d000#", deviceId);
+    	    Serial.print(temp);
 			break;
         }
         /*
@@ -452,8 +431,8 @@ void flatcapCommand(char* command) {
         case 'D': {
 			ledcWrite(LED, 0);
 			lightStatus = OFF;
-    	    sprintf(temp, "*D%02d000", deviceId);
-    	    Serial.println(temp);
+    	    sprintf(temp, "*D%02d000#", deviceId);
+    	    Serial.print(temp);
 			break;
         }
         /*
@@ -474,8 +453,8 @@ void flatcapCommand(char* command) {
     	    if(lightStatus == ON && coverStatus == PARKED) {
     	    	ledcWrite(LED, brightness);
             }
-    	    sprintf(temp, "*B%02d%03d", deviceId, brightness);
-            Serial.println(temp);
+    	    sprintf(temp, "*B%02d%03d#", deviceId, brightness);
+            Serial.print(temp);
 			break;
         }
 		/*
@@ -496,8 +475,8 @@ void flatcapCommand(char* command) {
     	    if(coverStatus == PARKED) {
 				moveServo(parkAngle);
             }
-    	    sprintf(temp, "*Z%02d%03d", deviceId, parkAngle);
-            Serial.println(temp);
+    	    sprintf(temp, "*Z%02d%03d#", deviceId, parkAngle);
+            Serial.print(temp);
 			break;
         }
 		/*
@@ -518,8 +497,8 @@ void flatcapCommand(char* command) {
     	    if(coverStatus == UNPARKED) {
 				moveServo(unparkAngle);
             }
-    	    sprintf(temp, "*A%02d%03d", deviceId, unparkAngle);
-            Serial.println(temp);
+    	    sprintf(temp, "*A%02d%03d#", deviceId, unparkAngle);
+            Serial.print(temp);
 			break;
         }
 		/*
@@ -529,8 +508,8 @@ void flatcapCommand(char* command) {
     	xxx = current brightness value from 000-255
         */
         case 'J': {
-            sprintf(temp, "*J%02d%03d", deviceId, brightness);
-            Serial.println(temp);
+            sprintf(temp, "*J%02d%03d#", deviceId, brightness);
+            Serial.print(temp);
 			break;
         }
 		/*
@@ -540,8 +519,8 @@ void flatcapCommand(char* command) {
     	xxx = value that park angle was set from 000-360
         */
         case 'K': {
-            sprintf(temp, "*K%02d%03d", deviceId, parkAngle);
-            Serial.println(temp);
+            sprintf(temp, "*K%02d%03d#", deviceId, parkAngle);
+            Serial.print(temp);
 			break;
         }
 		/*
@@ -551,8 +530,8 @@ void flatcapCommand(char* command) {
     	xxx = value that unpark angle was set from 000-360
         */
         case 'H': {
-            sprintf(temp, "*H%02d%03d", deviceId, unparkAngle);
-            Serial.println(temp);
+            sprintf(temp, "*H%02d%03d#", deviceId, unparkAngle);
+            Serial.print(temp);
 			break;
         }
         /*
@@ -561,8 +540,8 @@ void flatcapCommand(char* command) {
     	Return : *Vid001#
         */
         case 'V': {
-            sprintf(temp, "*V%02d001", deviceId);
-            Serial.println(temp);
+            sprintf(temp, "*V%02d001#", deviceId);
+            Serial.print(temp);
 			break;
         }
     }
