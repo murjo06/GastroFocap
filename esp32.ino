@@ -122,10 +122,6 @@ void setup() {
 	while(Serial.available()) {
 		Serial.read();
 	}
-	#ifdef USE_WC_EEPROM
-	pinMode(EEPROM_WC, OUTPUT);
-	digitalWrite(EEPROM_WC, HIGH);
-	#endif
 	#ifndef EXTERNAL_EEPROM
 	EEPROM.begin(10);
 	EEPROM.get(PARK_ANGLE_ADDRESS, parkAngle);
@@ -134,6 +130,10 @@ void setup() {
 	coverStatus = EEPROM.read(SHUTTER_STATUS_ADDRESS);
 	EEPROM.get(FOCUSER_POSITION_ADDRESS, currentPosition);
 	#else
+	#ifdef USE_WC_EEPROM
+	pinMode(EEPROM_WC, OUTPUT);
+	digitalWrite(EEPROM_WC, HIGH);
+	#endif
 	Wire.begin(SDA, SCL);
 	Wire.setClock(100000);
 	parkAngle = (uint16_t)eepromReadLong(PARK_ANGLE_ADDRESS, 2);
@@ -624,19 +624,37 @@ void eepromWriteLong(unsigned int address, unsigned long data, int length) {
 
 unsigned long eepromReadLong(unsigned int address, int length) {
 	byte data[4] = {0};
+	#ifdef USE_WC_EEPROM
+	digitalWrite(EEPROM_WC, LOW);
+	delay(1);
+	#endif
 	for(int i = 0; i < length; i++) {
-		data[4 - length + i] = eepromReadByte(address + i);
+		data[4 - length + i] = eepromReadByte(address + i, false);
 	}
+	#ifdef USE_WC_EEPROM
+	digitalWrite(EEPROM_WC, HIGH);
+	#endif
 	return (unsigned long)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
 }
 
-void eepromWriteByte(int address, byte data) {
+void eepromWriteByte(int address, byte data, bool protectWrite = true) {
+	#ifdef USE_WC_EEPROM
+	if(protectWrite) {
+		digitalWrite(EEPROM_WC, LOW);
+		delay(1);
+	}
+	#endif
     Wire.beginTransmission(EEPROM_ADDRESS);
     Wire.write(address >> 8);
     Wire.write(address & 0xFF);
     Wire.write(data);
     Wire.endTransmission();
     delay(10);
+	#ifdef USE_WC_EEPROM
+	if(protectWrite) {
+		digitalWrite(EEPROM_WC, HIGH);
+	}
+	#endif
 }
 
 byte eepromReadByte(int address) {
