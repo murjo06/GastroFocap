@@ -414,8 +414,8 @@ void flatcapCommand(char* command) {
     	Return : *Oid000#
         */
         case 'O': {
-    	    sprintf(temp, "*O%02d000", deviceId);
     	    setShutter(UNPARKED);
+			sprintf(temp, "*O%02d000", deviceId);
     	    Serial.println(temp);
 			break;
         }
@@ -425,8 +425,8 @@ void flatcapCommand(char* command) {
     	Return : *Cid000#
         */
         case 'C': {
-    	    sprintf(temp, "*C%02d000", deviceId);
     	    setShutter(PARKED);
+			sprintf(temp, "*C%02d000", deviceId);
     	    Serial.println(temp);
 			break;
         }
@@ -469,7 +469,7 @@ void flatcapCommand(char* command) {
 			EEPROM.update(BRIGHTNESS_ADDRESS, brightness % 256);
 			EEPROM.commit();
 			#else
-			eepromWriteByte(BRIGHTNESS_ADDRESS, (byte)(brightness % 256));
+			eepromWriteByte(BRIGHTNESS_ADDRESS, (byte)(brightness % 256), true);
 			#endif
     	    if(lightStatus == ON && coverStatus == PARKED) {
     	    	ledcWrite(LED, brightness % 256);
@@ -486,17 +486,17 @@ void flatcapCommand(char* command) {
     	xxx = value that park angle was set from 000-360
         */
         case 'Z': {
-    	    parkAngle = atoi(data);
+    	    parkAngle = atoi(data) % 360;
 			#ifndef EXTERNAL_EEPROM
-			EEPROM.put(PARK_ANGLE_ADDRESS, (uint16_t)(parkAngle % 360));
+			EEPROM.put(PARK_ANGLE_ADDRESS, (uint16_t)parkAngle);
 			EEPROM.commit();
 			#else
-			eepromWriteLong(PARK_ANGLE_ADDRESS, (unsigned long)(parkAngle % 360), 2);
+			eepromWriteLong(PARK_ANGLE_ADDRESS, (unsigned long)parkAngle, 2);
 			#endif
     	    if(coverStatus == PARKED) {
 				moveServo(parkAngle % 360);
             }
-    	    sprintf(temp, "*Z%02d%03d", deviceId, parkAngle % 360);
+    	    sprintf(temp, "*Z%02d%03d", deviceId, parkAngle);
             Serial.println(temp);
 			break;
         }
@@ -508,17 +508,17 @@ void flatcapCommand(char* command) {
     	xxx = value that unpark angle was set from 000-360
         */
         case 'A': {
-    	    unparkAngle = atoi(data);
+    	    unparkAngle = atoi(data) % 360;
 			#ifndef EXTERNAL_EEPROM
-			EEPROM.put(UNPARK_ANGLE_ADDRESS, (uint16_t)(unparkAngle % 360));
+			EEPROM.put(UNPARK_ANGLE_ADDRESS, (uint16_t)unparkAngle);
 			EEPROM.commit();
 			#else
-			eepromWriteLong(PARK_ANGLE_ADDRESS, (unsigned long)(unparkAngle % 360), 2);
+			eepromWriteLong(UNPARK_ANGLE_ADDRESS, (unsigned long)unparkAngle, 2);
 			#endif
     	    if(coverStatus == UNPARKED) {
 				moveServo(unparkAngle % 360);
             }
-    	    sprintf(temp, "*A%02d%03d", deviceId, unparkAngle % 360);
+    	    sprintf(temp, "*A%02d%03d", deviceId, unparkAngle);
             Serial.println(temp);
 			break;
         }
@@ -586,14 +586,14 @@ void setShutter(int shutter) {
 	EEPROM.update(SHUTTER_STATUS_ADDRESS, shutter);
 	EEPROM.commit();
 	#else
-	eepromWriteByte(SHUTTER_STATUS_ADDRESS, (byte)shutter);
+	eepromWriteByte(SHUTTER_STATUS_ADDRESS, (byte)shutter, true);
 	#endif
 }
 
 void moveServo(int angle) {
 	motorStatus = RUNNING;
 	int direction = (servoPosition > angle) ? -1 : 1;
-	while(abs(servoPosition - angle) >= SERVO_INCREMENT) {
+	while(abs((int)servoPosition - angle) >= SERVO_INCREMENT) {
 		servoPosition += SERVO_INCREMENT * direction;
 		servo.write(servoPosition);
 		delay(SERVO_DELAY);
@@ -618,7 +618,7 @@ long hexstr2long(String line) {
 
 void eepromWriteLong(unsigned int address, unsigned long data, int length) {
 	for(int i = 0; i < length; i++) {
-		eepromWriteByte(address + i, (data >> (8 * (length - i - 1))) & 0xFF);
+		eepromWriteByte(address + i, (data >> (8 * (length - i - 1))) & 0xFF, false);
 	}
 }
 
@@ -629,7 +629,7 @@ unsigned long eepromReadLong(unsigned int address, int length) {
 	delay(1);
 	#endif
 	for(int i = 0; i < length; i++) {
-		data[4 - length + i] = eepromReadByte(address + i, false);
+		data[4 - length + i] = eepromReadByte(address + i);
 	}
 	#ifdef USE_WC_EEPROM
 	digitalWrite(EEPROM_WC, HIGH);
@@ -637,7 +637,7 @@ unsigned long eepromReadLong(unsigned int address, int length) {
 	return (unsigned long)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
 }
 
-void eepromWriteByte(int address, byte data, bool protectWrite = true) {
+void eepromWriteByte(int address, byte data, bool protectWrite) {
 	#ifdef USE_WC_EEPROM
 	if(protectWrite) {
 		digitalWrite(EEPROM_WC, LOW);
