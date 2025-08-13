@@ -4,3 +4,4 @@ pcb/*
 !pcb/GastroFlatcap.kicad_prl
 !pcb/GastroFlatcap.kicad_pro
 !pcb/GastroFlatcap.kicad_sch
+m24c64.cpp

@@ -4,6 +4,7 @@
 #include <DallasTemperature.h>
 #include <TMCStepper.h>
 #include <Streaming.h>
+#include <Ticker.h>
 
 #define EXTERNAL_EEPROM
 //#define USE_WC_EEPROM
@@ -77,7 +78,7 @@ enum addresses {
 	PARK_ANGLE_ADDRESS = 1,
 	UNPARK_ANGLE_ADDRESS = 3,
 	SHUTTER_STATUS_ADDRESS = 5,
-    FOCUSER_POSITION = 6            // takes 4 bytes
+    FOCUSER_POSITION_ADDRESS = 6            // takes 4 bytes
 };
 
 uint8_t deviceId = 99;				// id for gastro flatcap
@@ -104,7 +105,7 @@ unsigned long lastSavedPosition = 0;
 long millisLastMove = 0;
 bool isEnabled = false;
 
-hw_timer_t *timer = NULL;
+Ticker stepperTicker;
 
 void setup() {
     pinMode(LED, OUTPUT);
@@ -112,6 +113,15 @@ void setup() {
 	pinMode(STEP, OUTPUT);
 	pinMode(DIR, OUTPUT);
 	pinMode(SERVO, OUTPUT);
+	
+	Serial.begin(9600);
+	Serial2.begin(115200, SERIAL_8N1, RX, TX);
+	while(!Serial || !Serial2) {
+		delay(5);
+	}
+	while(Serial.available()) {
+		Serial.read();
+	}
 	#ifdef USE_WC_EEPROM
 	pinMode(EEPROM_WC, OUTPUT);
 	digitalWrite(EEPROM_WC, HIGH);
@@ -122,37 +132,24 @@ void setup() {
 	EEPROM.get(UNPARK_ANGLE_ADDRESS, unparkAngle);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
 	coverStatus = EEPROM.read(SHUTTER_STATUS_ADDRESS);
-	EEPROM.get(FOCUSER_POSITION, currentPosition);
+	EEPROM.get(FOCUSER_POSITION_ADDRESS, currentPosition);
 	#else
 	Wire.begin(SDA, SCL);
-	byte bytes[2] = {0};
-	eepromReadBytes(PARK_ANGLE_ADDRESS, bytes, 2);
-	parkAngle = (uint16_t)bytesToLong(bytes, 2);
+	Wire.setClock(100000);
+	parkAngle = (uint16_t)eepromReadLong(PARK_ANGLE_ADDRESS, 2);
 
-	eepromReadBytes(UNPARK_ANGLE_ADDRESS, bytes, 2);
-	unparkAngle = (uint16_t)bytesToLong(bytes, 2);
+	unparkAngle = (uint16_t)eepromReadLong(UNPARK_ANGLE_ADDRESS, 2);
 
 	brightness = (uint8_t)eepromReadByte(BRIGHTNESS_ADDRESS);
 	coverStatus = (uint8_t)eepromReadByte(SHUTTER_STATUS_ADDRESS);
 
-	byte stepperBytes[4] = {0};
-	eepromReadBytes(FOCUSER_POSITION, stepperBytes, 4);
-	currentPosition = (unsigned long)bytesToLong(stepperBytes, 4);
+	currentPosition = eepromReadLong(FOCUSER_POSITION_ADDRESS, 4);
 	#endif
 	servo.attach(SERVO);
 	servoPosition = (coverStatus == PARKED) ? parkAngle : unparkAngle;
 
     ledcAttach(LED, 1000, 8);				// make sure that the MOSFET's gate charge is small enough for maximum pin current of 20 mA
 	ledcWrite(LED, 0);
-
-	Serial.begin(9600);
-	Serial2.begin(115200, SERIAL_8N1, RX, TX);
-	while(!Serial || !Serial2) {
-		delay(5);
-	}
-	while(Serial.available()) {
-		Serial.read();
-	}
 
 	TMCdriver.begin();
 	TMCdriver.toff(3);						// enables driver in software
@@ -188,9 +185,7 @@ void setup() {
 		Serial.read();
 	}
 
-	timer = timerBegin(1000000);
-	timerAttachInterrupt(timer, &onTimer);
-	timerAlarm(timer, 2000, true, 0);
+	stepperTicker.attach_ms(2, stepperRun);
 }
 
 void loop() {
@@ -234,32 +229,31 @@ void loop() {
 	}
 	buffer[i] = '\0';
 	if(i >= 1) {
-		String command = String(buffer);
-		if(!isFocuserCommand) {
-			flatcapCommand(command);
+		if(isFocuserCommand) {
+			focuserCommand(buffer);
 		} else {
-			focuserCommand(command);
+			flatcapCommand(buffer);
 		}
 	}
-
     while(Serial.available()) {
     	Serial.read();
     }
 }
 
-void focuserCommand(String command) {
-	if(command.startsWith("2")) {
-		command = command.substring(1);
+void focuserCommand(char* command) {
+	String temp = String(command);
+	if(temp.startsWith("2")) {
+		temp = temp.substring(1);
 	}
 	String cmd, param;
-	int len = command.length();
+	int len = temp.length();
 	if(len >= 2) {
-		cmd = command.substring(0, 2);
+		cmd = temp.substring(0, 2);
 	} else {
-		cmd = command.substring(0, 1);
+		cmd = temp.substring(0, 1);
 	}
 	if(len > 2) {
-		param = command.substring(2);
+		param = temp.substring(2);
 	}
 	if(param.length()) {
 		return;
@@ -319,20 +313,19 @@ void focuserCommand(String command) {
 	}
 	// set the temperature coefficient
 	if(cmd.equalsIgnoreCase("SC")) {
-		if (param.length() > 4) {
+		if(param.length() > 4) {
 			param = param.substring(param.length() - 4);
 		}
-		if (param.startsWith("F")) {
+		if(param.startsWith("F")) {
 			tCoeff = ((0xFFFF - strtol(param.c_str(), NULL, 16)) / -2.0f) - 0.5f;
-		}
-		else {
+		} else {
 			tCoeff = strtol(param.c_str(), NULL, 16) / 2.0f;
 		}
 		// Serial.print("02#");
 	}
 	// motor is moving - 01 if moving, 00 otherwise
 	if(cmd.equalsIgnoreCase("GI")) {
-		if (stepper.distanceToGo() != 0) {
+		if(stepper.distanceToGo() != 0) {
 			Serial.print("01#");
 		}
 		else {
@@ -370,12 +363,10 @@ void focuserCommand(String command) {
 		if(millis() - millisLastMove > DISABLE_DELAY) {
 			if(lastSavedPosition != currentPosition) {
 				#ifndef EXTERNAL_EEPROM
-				EEPROM.put(FOCUSER_POSITION, currentPosition);
+				EEPROM.put(FOCUSER_POSITION_ADDRESS, currentPosition);
 				EEPROM.commit();
 				#else
-				byte bytes[4] = {0};
-				longToBytes(currentPosition, bytes, 4);
-				eepromWriteBytes(FOCUSER_POSITION, bytes, 4);
+				eepromWriteLong(FOCUSER_POSITION_ADDRESS, currentPosition, 4);
 				#endif
 				lastSavedPosition = currentPosition;
 			}
@@ -387,13 +378,10 @@ void focuserCommand(String command) {
 	}
 }
 
-void flatcapCommand(String command) {
-	int length = command.length();
-	char buffer[length + 2];
-	command.toCharArray(buffer, length + 1);
+void flatcapCommand(char* command) {
 	char temp[8];
-	char* cmd = buffer;
-    char* dat = buffer + 1;
+	char* cmd = command;
+    char* dat = command + 1;
 	char data[3] = {0};
 	strncpy(data, dat, 3);
     switch(*cmd) {
@@ -503,9 +491,7 @@ void flatcapCommand(String command) {
 			EEPROM.put(PARK_ANGLE_ADDRESS, (uint16_t)(parkAngle % 360));
 			EEPROM.commit();
 			#else
-			byte bytes[2] = {0};
-			longToBytes((long)(parkAngle % 360), bytes, 2);
-			eepromWriteBytes(PARK_ANGLE_ADDRESS, bytes, 2);
+			eepromWriteLong(PARK_ANGLE_ADDRESS, (unsigned long)(parkAngle % 360), 2);
 			#endif
     	    if(coverStatus == PARKED) {
 				moveServo(parkAngle % 360);
@@ -527,9 +513,7 @@ void flatcapCommand(String command) {
 			EEPROM.put(UNPARK_ANGLE_ADDRESS, (uint16_t)(unparkAngle % 360));
 			EEPROM.commit();
 			#else
-			byte bytes[2] = {0};
-			longToBytes((long)(unparkAngle % 360), bytes, 2);
-			eepromWriteBytes(PARK_ANGLE_ADDRESS, bytes, 2);
+			eepromWriteLong(PARK_ANGLE_ADDRESS, (unsigned long)(unparkAngle % 360), 2);
 			#endif
     	    if(coverStatus == UNPARKED) {
 				moveServo(unparkAngle % 360);
@@ -620,7 +604,7 @@ void moveServo(int angle) {
 	motorStatus = STOPPED;
 }
 
-void ARDUINO_ISR_ATTR onTimer() {
+void stepperRun() {
     stepper.run();
 }
 
@@ -632,12 +616,27 @@ long hexstr2long(String line) {
 
 #ifdef EXTERNAL_EEPROM
 
+void eepromWriteLong(unsigned int address, unsigned long data, int length) {
+	for(int i = 0; i < length; i++) {
+		eepromWriteByte(address + i, (data >> (8 * (length - i - 1))) & 0xFF);
+	}
+}
+
+unsigned long eepromReadLong(unsigned int address, int length) {
+	byte data[4] = {0};
+	for(int i = 0; i < length; i++) {
+		data[4 - length + i] = eepromReadByte(address + i);
+	}
+	return (unsigned long)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
+}
+
 void eepromWriteByte(int address, byte data) {
     Wire.beginTransmission(EEPROM_ADDRESS);
     Wire.write(address >> 8);
     Wire.write(address & 0xFF);
     Wire.write(data);
     Wire.endTransmission();
+    delay(10);
 }
 
 byte eepromReadByte(int address) {
@@ -652,140 +651,5 @@ byte eepromReadByte(int address) {
     }
     return data;
 }
-
-void eepromWriteBytes(int address, byte* data, int length) {
-    byte notAlignedLength = 0;
-    byte pageOffset = address % 32;
-    if(pageOffset > 0) {
-        notAlignedLength = 32 - pageOffset;
-        if(length < notAlignedLength) {
-            notAlignedLength = length;
-        }
-        eepromWritePage(address, data, notAlignedLength);
-        length -= notAlignedLength;
-    }
-    if(length > 0) {
-        address += notAlignedLength;
-        data += notAlignedLength;
-        byte pageCount = length / 32;
-        for(byte i = 0; i < pageCount; i++) {
-            eepromWritePage(address, data, 32);
-            address += 32;
-            data += 32;
-            length -= 32;
-        }
-        if(length > 0) {
-            eepromWritePage(address, data, length);
-        }
-    }
-}
-
-void eepromReadBytes(int address, byte* data, int length) {
-    byte bufferCount = length / 32;
-    for(byte i = 0; i < bufferCount; i++) {
-        int offset = i * 32;
-        eepromReadBuffer(address + offset, data + offset, 32);
-    }
-    byte remainingBytes = length % 32;
-    int offset = length - remainingBytes;
-    eepromReadBuffer(address + offset, data + offset, remainingBytes);
-}
-
-void eepromWritePage(int address, byte* data, byte length) {
-    byte bufferCount = length / 30;
-    for(byte i = 0; i < bufferCount; i++) {
-        byte offset = i * 30;
-        eepromWriteBuffer(address + offset, data + offset, 30);
-    }
-    byte remainingBytes = length % 30;
-    byte offset = length - remainingBytes;
-    eepromWriteBuffer(address + offset, data + offset, remainingBytes);
-}
-
-void eepromWriteBuffer(int address, byte* data, byte length) {
-    Wire.beginTransmission(EEPROM_ADDRESS);
-    Wire.write(address >> 8);
-    Wire.write(address & 0xFF);
-    for(byte i = 0; i < length; i++) {
-        Wire.write(data[i]);
-    }
-    Wire.endTransmission();
-    delay(10);
-}
-
-void eepromReadBuffer(int address, byte* data, byte length) {
-    Wire.beginTransmission(EEPROM_ADDRESS);
-    Wire.write(address >> 8);
-    Wire.write(address & 0xFF);
-    Wire.endTransmission();
-    Wire.requestFrom(EEPROM_ADDRESS, length);
-    for(byte i = 0; i < length; i++) {
-        if(Wire.available()) {
-            data[i] = Wire.read();
-        }
-    }
-}
-
-long bytesToLong(byte* bytes, int length) {
-	long result = 0;
-	for(int i = 0; i < length; i++) {
-		result |= ((long)(bytes[i] & 0xFF) << ((length - i - 1) * 8));
-	}
-	return result;
-}
-
-void longToBytes(long value, byte* bytes, int length) {
-	for(int i = 0; i < length; i++) {
-		bytes[i] = ((byte)(value >> ((length - i - 1) * 8)) & 0xFF);
-	}
-}
-
-/*
-void eepromWriteByte(unsigned int address, byte data) {
-	#ifdef USE_WC_EEPROM
-	digitalWrite(EEPROM_WC, LOW);
-	delay(1);
-	#endif
-	if(eepromReadByte(address) == data) {
-		return;
-	}
-  	Wire.beginTransmission(EEPROM_ADDRESS);
-  	Wire.write((int)(address >> 8));	// MSB
-  	Wire.write((int)(address & 0xFF));	// LSB
-  	Wire.write(data);
-  	Wire.endTransmission(true);
-	delay(10);
-	#ifdef USE_WC_EEPROM
-	digitalWrite(EEPROM_WC, HIGH);
-	#endif
-}
-
-byte eepromReadByte(unsigned int address) {
-  	byte rdata = 0xFF;
-  	Wire.beginTransmission(EEPROM_ADDRESS);
-  	Wire.write((int)(address >> 8));	// MSB
-  	Wire.write((int)(address & 0xFF));	// LSB
-  	Wire.endTransmission(true);
-  	Wire.requestFrom(EEPROM_ADDRESS, 1);
-  	if(Wire.available()) {
-  	  	rdata = Wire.read();
-  	}
-  	return rdata;
-}
-
-void eepromWriteLong(unsigned int address, long data, int length) {
-	for(int i = 0; i < length; i++) {
-		eepromWriteByte(address + i, (data >> (8 * (length - i - 1))) & 0xFF);
-	}
-}
-
-long eepromReadLong(unsigned int address, int length) {
-	byte data[4] = {0};
-	for(int i = 0; i < length; i++) {
-		data[4 - length + i] = eepromReadByte(address + i);
-	}
-	return (long)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
-}
-*/
 
 #endif
