@@ -136,11 +136,11 @@ void setup() {
 	#endif
 	Wire.begin(SDA, SCL);
 	Wire.setClock(100000);
-	parkAngle = (uint16_t)eepromReadLong(PARK_ANGLE_ADDRESS, 2);
+	parkAngle = (uint16_t)eepromReadLong(PARK_ANGLE_ADDRESS, 2) % 360;
 
-	unparkAngle = (uint16_t)eepromReadLong(UNPARK_ANGLE_ADDRESS, 2);
+	unparkAngle = (uint16_t)eepromReadLong(UNPARK_ANGLE_ADDRESS, 2) % 360;
 
-	brightness = (uint8_t)eepromReadByte(BRIGHTNESS_ADDRESS);
+	brightness = (uint8_t)eepromReadByte(BRIGHTNESS_ADDRESS) % 256;
 	coverStatus = (uint8_t)eepromReadByte(SHUTTER_STATUS_ADDRESS);
 
 	currentPosition = eepromReadLong(FOCUSER_POSITION_ADDRESS, 4);
