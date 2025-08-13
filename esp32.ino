@@ -464,17 +464,17 @@ void flatcapCommand(char* command) {
     	xxx = value that brightness was set from 000-255
         */
         case 'B': {
-    	    brightness = atoi(data);
+    	    brightness = atoi(data) % 256;
 			#ifndef EXTERNAL_EEPROM
-			EEPROM.update(BRIGHTNESS_ADDRESS, brightness % 256);
+			EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
 			EEPROM.commit();
 			#else
-			eepromWriteByte(BRIGHTNESS_ADDRESS, (byte)(brightness % 256), true);
+			eepromWriteByte(BRIGHTNESS_ADDRESS, (byte)brightness, true);
 			#endif
     	    if(lightStatus == ON && coverStatus == PARKED) {
-    	    	ledcWrite(LED, brightness % 256);
+    	    	ledcWrite(LED, brightness);
             }
-    	    sprintf(temp, "*B%02d%03d", deviceId, brightness % 256);
+    	    sprintf(temp, "*B%02d%03d", deviceId, brightness);
             Serial.println(temp);
 			break;
         }
@@ -494,7 +494,7 @@ void flatcapCommand(char* command) {
 			eepromWriteLong(PARK_ANGLE_ADDRESS, (unsigned long)parkAngle, 2);
 			#endif
     	    if(coverStatus == PARKED) {
-				moveServo(parkAngle % 360);
+				moveServo(parkAngle);
             }
     	    sprintf(temp, "*Z%02d%03d", deviceId, parkAngle);
             Serial.println(temp);
@@ -516,7 +516,7 @@ void flatcapCommand(char* command) {
 			eepromWriteLong(UNPARK_ANGLE_ADDRESS, (unsigned long)unparkAngle, 2);
 			#endif
     	    if(coverStatus == UNPARKED) {
-				moveServo(unparkAngle % 360);
+				moveServo(unparkAngle);
             }
     	    sprintf(temp, "*A%02d%03d", deviceId, unparkAngle);
             Serial.println(temp);
@@ -529,7 +529,7 @@ void flatcapCommand(char* command) {
     	xxx = current brightness value from 000-255
         */
         case 'J': {
-            sprintf(temp, "*J%02d%03d", deviceId, brightness % 256);
+            sprintf(temp, "*J%02d%03d", deviceId, brightness);
             Serial.println(temp);
 			break;
         }
@@ -540,7 +540,7 @@ void flatcapCommand(char* command) {
     	xxx = value that park angle was set from 000-360
         */
         case 'K': {
-            sprintf(temp, "*K%02d%03d", deviceId, parkAngle % 360);
+            sprintf(temp, "*K%02d%03d", deviceId, parkAngle);
             Serial.println(temp);
 			break;
         }
@@ -551,7 +551,7 @@ void flatcapCommand(char* command) {
     	xxx = value that unpark angle was set from 000-360
         */
         case 'H': {
-            sprintf(temp, "*H%02d%03d", deviceId, unparkAngle % 360);
+            sprintf(temp, "*H%02d%03d", deviceId, unparkAngle);
             Serial.println(temp);
 			break;
         }
