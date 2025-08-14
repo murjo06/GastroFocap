@@ -145,7 +145,7 @@ void setup() {
 
 	currentPosition = eepromReadLong(FOCUSER_POSITION_ADDRESS, 4);
 	#endif
-	servo.attach(SERVO);
+	servo.attach(SERVO, 0, 270);
 	servoPosition = (coverStatus == PARKED) ? parkAngle : unparkAngle;
 
     ledcAttach(LED, 1000, 8);				// make sure that the MOSFET's gate charge is small enough for maximum pin current of 20 mA
