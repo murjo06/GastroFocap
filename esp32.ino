@@ -37,7 +37,7 @@
 
 #define TEMP 13
 
-#define PERIOD_US 2000				// at most 1 / STEPPER_SPEED
+#define PERIOD_MS 2					// at most 1 / STEPPER_SPEED
 
 #define STEPPER_SPEED 200
 #define STEPPER_ACCELERATION 800
@@ -182,7 +182,7 @@ void setup() {
         delay(5);
     }
 
-	stepperTicker.attach_ms(2, stepperRun);
+	stepperTicker.attach_ms(PERIOD_MS, stepperRun);
 }
 
 void loop() {
@@ -596,23 +596,23 @@ long hexstr2long(String line) {
 #ifdef EXTERNAL_EEPROM
 
 void eepromWriteLong(unsigned int address, unsigned long data, int length) {
-	for(int i = 0; i < length; i++) {
-		eepromWriteByte(address + i, (data >> (8 * (length - i - 1))) & 0xFF, false);
-	}
-}
-
-unsigned long eepromReadLong(unsigned int address, int length) {
-	byte data[4] = {0};
 	#ifdef USE_WC_EEPROM
 	digitalWrite(EEPROM_WC, LOW);
 	delay(1);
 	#endif
 	for(int i = 0; i < length; i++) {
-		data[4 - length + i] = eepromReadByte(address + i);
+		eepromWriteByte(address + i, (data >> (8 * (length - i - 1))) & 0xFF, false);
 	}
 	#ifdef USE_WC_EEPROM
 	digitalWrite(EEPROM_WC, HIGH);
 	#endif
+}
+
+unsigned long eepromReadLong(unsigned int address, int length) {
+	byte data[4] = {0};
+	for(int i = 0; i < length; i++) {
+		data[4 - length + i] = eepromReadByte(address + i);
+	}
 	return (unsigned long)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
 }
 
