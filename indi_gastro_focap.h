@@ -3,52 +3,44 @@
 #include "defaultdevice.h"
 #include "indilightboxinterface.h"
 #include "indidustcapinterface.h"
-#include "indifocuser.h"
+#include "indifocuserinterface.h"
 
 #include <stdint.h>
 #include <chrono>
 
-namespace Connection
-{
-class Serial;
-}
-
-class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, public INDI::DustCapInterface, public INDI::Focuser
+class Focap : public INDI::DefaultDevice, public INDI::LightBoxInterface, public INDI::DustCapInterface, public INDI::FocuserInterface
 {
     public:
-        FlatCap();
-        virtual ~FlatCap() = default;
+        Focap();
+        virtual ~Focap() = default;
+
+        const char* getDefaultName() override;
 
         virtual bool initProperties() override;
-        virtual void ISGetProperties(const char *dev) override;
+        virtual void ISGetProperties(const char* dev) override;
         virtual bool updateProperties() override;
 
-        virtual bool ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n) override;
-        virtual bool ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n) override;
-        virtual bool ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n) override;
-        virtual bool ISSnoopDevice(XMLEle *root) override;
+        virtual bool ISNewText(const char* dev, const char* name, char* texts[], char* names[], int n) override;
+        virtual bool ISNewSwitch(const char* dev, const char* name, ISState* states, char* names[], int n) override;
+        virtual bool ISNewNumber(const char* dev, const char* name, double values[], char* names[], int n) override;
+        virtual bool ISSnoopDevice(XMLEle* root) override;
 
-        static void parkTimeoutHelper(void *context);
-        static void unparkTimeoutHelper(void *context);
+        static void parkTimeoutHelper(void* context);
+        static void unparkTimeoutHelper(void* context);
 
-        static void timedMoveHelper(void * context);
+        static void timedMoveHelper(void* context);
 
     protected:
-        const char *getDefaultName() override;
-
-        virtual bool Handshake() override;
-
-        // virtual IPState MoveFocuser(FocusDirection dir, int speed, uint16_t duration) override;
+        // From INDI::Focuser
         virtual IPState MoveAbsFocuser(uint32_t targetTicks) override;
         virtual IPState MoveRelFocuser(FocusDirection dir, uint32_t ticks) override;
         virtual bool SyncFocuser(uint32_t ticks) override;
+        bool AbortFocuser() override;
 
-        virtual bool AbortFocuser() override;
-        virtual void TimerHit() override;
-        virtual bool saveConfigItems(FILE * fp) override;
-
-        virtual bool saveConfigItems(FILE *fp) override;
+        // From INDI::DefaultDevice
         void TimerHit() override;
+        bool saveConfigItems(FILE* fp) override;
+        virtual bool Handshake();
 
         virtual IPState ParkCap() override;
         virtual IPState UnParkCap() override;
@@ -73,7 +65,7 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         int unparkTimeoutID { -1 };
 
         ITextVectorProperty StatusTP;
-        IText StatusT[3] {};
+        IText StatusT[4] {};
 
         ITextVectorProperty FirmwareTP;
         IText FirmwareT[1] {};
@@ -87,7 +79,8 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         uint8_t simulationWorkCounter{ 0 };
         uint8_t prevCoverStatus{ 0xFF };
         uint8_t prevLightStatus{ 0xFF };
-        uint8_t prevMotorStatus{ 0xFF };
+        uint8_t prevFlatcapStatus{ 0xFF };
+        uint8_t prevFocuserStatus{ 0xFF};
         uint16_t prevBrightness{ 0xFF };
         uint16_t prevParkAngle{ 0 };
         uint16_t prevUnparkAngle{ 0 };
@@ -95,7 +88,7 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         Connection::Serial *serialConnection{ nullptr };
 
         bool Ack();
-        bool sendCommand(const char* cmd, char* res = nullptr, bool silent = false, int nret = 0);
+        bool sendCommand(const char* cmd, char* res = nullptr, int nret = 0);
 
         void GetFocusParams();
         bool readTemperature();
@@ -109,6 +102,9 @@ class FlatCap : public INDI::DefaultDevice, public INDI::LightBoxInterface, publ
         bool setTemperatureCoefficient(double coefficient);
         bool setTemperatureCompensation(bool enable);
         void timedMoveCallback();
+
+        static constexpr const char * FOCUSER_TAB = "Focuser";
+        static constexpr const char * FLATCAP_TAB = "Flatcap";
 
         uint32_t targetPos { 0 }, lastPos { 0 }, lastTemperature { 0 };
 

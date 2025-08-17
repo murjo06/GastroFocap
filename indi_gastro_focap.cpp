@@ -21,7 +21,7 @@ static std::unique_ptr<Focap> focap(new Focap());
 #define MIN_ANGLE 0.0
 #define MAX_ANGLE 360.0
 
-Focap::Focap() : LightBoxInterface(this), DustCapInterface(this)
+Focap::Focap() : LightBoxInterface(this), DustCapInterface(this), FocuserInterface(this)
 {
     setVersion(1, 1);
 
@@ -30,39 +30,34 @@ Focap::Focap() : LightBoxInterface(this), DustCapInterface(this)
 
 bool Focap::initProperties()
 {
-    INDI::Focuser::initProperties();
-
-    setDefaultPollingPeriod(500);
-    addDebugControl();
-
     INDI::DefaultDevice::initProperties();
+    FI::initProperties(FOCUSER_TAB);
+    DI::initProperties(FLATCAP_TAB);
+    LI::initProperties(FLATCAP_TAB, CAN_DIM);
 
     IUFillText(&StatusT[0], "COVER", "Cover", nullptr);
     IUFillText(&StatusT[1], "LIGHT", "Light", nullptr);
-    IUFillText(&StatusT[2], "MOTOR", "Motor", nullptr);
-    IUFillTextVector(&StatusTP, StatusT, 3, getDeviceName(), "Status", "Status", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
+    IUFillText(&StatusT[2], "COVER_MOTOR", "Cover motor", nullptr);
+    IUFillText(&StatusT[3], "FOCUSER", "Focuser", nullptr);
+    IUFillTextVector(&StatusTP, StatusT, 4, getDeviceName(), "Status", "Status", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
     IUFillText(&FirmwareT[0], "VERSION", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
     IUFillNumber(&AnglesN[0], "PARK_ANGLE", "Park", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 0.0);
     IUFillNumber(&AnglesN[1], "UNPARK_ANGLE", "Unpark", "%.0f", MIN_ANGLE, MAX_ANGLE, 5.0, 270.0);
-
-    IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "ANGLES", "Shutter Angles", MAIN_CONTROL_TAB, IP_RW, 60, IPS_IDLE);
-
-    DI::initProperties(MAIN_CONTROL_TAB);
-    LI::initProperties(MAIN_CONTROL_TAB, CAN_DIM);
+    IUFillNumberVector(&AnglesNP, AnglesN, 2, getDeviceName(), "COVER_ANGLES", "Cover Angles", FLATCAP_TAB, IP_RW, 60, IPS_IDLE);
 
     TemperatureNP[0].fill("TEMPERATURE", "Celsius", "%6.2f", -50, 70., 0., 0.);
     TemperatureNP.fill(getDeviceName(), "FOCUS_TEMPERATURE", "Temperature", MAIN_CONTROL_TAB, IP_RO, 0, IPS_IDLE);
 
     TemperatureSettingNP[Calibration].fill("Calibration", "", "%6.2f", -100, 100, 0.5, 0);
     TemperatureSettingNP[Coefficient].fill("Coefficient", "", "%6.2f", -100, 100, 0.5, 0);
-    TemperatureSettingNP.fill(getDeviceName(), "T. Settings", "", OPTIONS_TAB, IP_RW, 0, IPS_IDLE);
+    TemperatureSettingNP.fill(getDeviceName(), "T. Settings", "", FOCUSER_TAB, IP_RW, 0, IPS_IDLE);
 
     TemperatureCompensateSP[INDI_ENABLED].fill("Enable", "", ISS_OFF);
     TemperatureCompensateSP[INDI_DISABLED].fill("Disable", "", ISS_ON);
-    TemperatureCompensateSP.fill(getDeviceName(), "T. Compensate", "", MAIN_CONTROL_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    TemperatureCompensateSP.fill(getDeviceName(), "T. Compensate", "", FOCUSER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     FocusRelPosNP[0].setMin(0.);
     FocusRelPosNP[0].setMax(50000.);
@@ -78,9 +73,14 @@ bool Focap::initProperties()
     LightIntensityNP[0].setMax(255);
     LightIntensityNP[0].setStep(5);
 
-    setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE);
+    setDriverInterface(AUX_INTERFACE | LIGHTBOX_INTERFACE | DUSTCAP_INTERFACE | FOCUSER_INTERFACE);
 
     addAuxControls();
+
+    setDefaultPollingPeriod(500);
+    addDebugControl();
+    addConfigurationControl();
+    addPollPeriodControl();
 
     serialConnection = new Connection::Serial(this);
     serialConnection->registerHandshake([&]()
@@ -99,10 +99,9 @@ void Focap::ISGetProperties(const char *dev)
 bool Focap::updateProperties()
 {
     INDI::DefaultDevice::updateProperties();
-
+    FI::updateProperties();
     DI::updateProperties();
     LI::updateProperties();
-    INDI::Focuser::updateProperties();
 
     if (isConnected())
     {
@@ -122,9 +121,9 @@ bool Focap::updateProperties()
         deleteProperty(StatusTP.name);
         deleteProperty(FirmwareTP.name);
         deleteProperty(AnglesNP.name);
-        deleteProperty(TemperatureNP.name); // was NP.getName()
-        deleteProperty(TemperatureSettingNP.name);
-        deleteProperty(TemperatureCompensateSP.name);
+        deleteProperty(TemperatureNP.getName());
+        deleteProperty(TemperatureSettingNP.getName());
+        deleteProperty(TemperatureCompensateSP.getName());
     }
 
     return true;
@@ -183,7 +182,7 @@ bool Focap::readVersion()
 {
     char res[RES_LENGTH] = {0};
 
-    if (sendCommand(":GV#", res, true, 2) == false)
+    if (sendCommand(":GV#", res, 2) == false)
     {
         return false;
     }
@@ -253,7 +252,7 @@ bool Focap::readPosition()
         FocusAbsPosNP[0].setValue(pos);
     else
     {
-        LOGF_ERROR("Unknown error: focuser position value (%s)", res);
+        //LOGF_ERROR("Unknown error: focuser position value (%s)", res);
         return false;
     }
 
@@ -348,6 +347,10 @@ bool Focap::ISNewNumber(const char *dev, const char *name, double values[], char
         {
             return true;
         }
+        if (FI::processNumber(dev, name, values, names, n))
+        {
+            return true;
+        }
         if (TemperatureSettingNP.isNameMatch(name))
         {
             TemperatureSettingNP.update(values, names, n);
@@ -378,6 +381,44 @@ bool Focap::ISNewText(const char *dev, const char *name, char *texts[], char *na
     }
 
     return INDI::DefaultDevice::ISNewText(dev, name, texts, names, n);
+}
+
+bool Focap::ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n)
+{
+    if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
+    {
+        if (DI::processSwitch(dev, name, states, names, n))
+            return true;
+
+        if (LI::processSwitch(dev, name, states, names, n))
+            return true;
+
+        if (FI::processSwitch(dev, name, states, names, n))
+            return true;
+
+        if (TemperatureCompensateSP.isNameMatch(name))
+        {
+            int last_index = TemperatureCompensateSP.findOnSwitchIndex();
+            TemperatureCompensateSP.update(states, names, n);
+
+            bool rc = setTemperatureCompensation((TemperatureCompensateSP[INDI_ENABLED].getState() == ISS_ON));
+
+            if (!rc)
+            {
+                TemperatureCompensateSP.setState(IPS_ALERT);
+                TemperatureCompensateSP.reset();
+                TemperatureCompensateSP[last_index].setState(ISS_ON);
+                TemperatureCompensateSP.apply();
+                return false;
+            }
+
+            TemperatureCompensateSP.setState(IPS_OK);
+            TemperatureCompensateSP.apply();
+            return true;
+        }
+    }
+
+    return INDI::DefaultDevice::ISNewSwitch(dev, name, states, names, n);
 }
 
 void Focap::GetFocusParams()
@@ -454,41 +495,6 @@ IPState Focap::MoveRelFocuser(FocusDirection dir, uint32_t ticks)
     return IPS_BUSY;
 }
 
-bool Focap::ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n)
-{
-    if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
-    {
-        if (DI::processSwitch(dev, name, states, names, n))
-            return true;
-
-        if (LI::processSwitch(dev, name, states, names, n))
-            return true;
-
-        if (TemperatureCompensateSP.isNameMatch(name))
-        {
-            int last_index = TemperatureCompensateSP.findOnSwitchIndex();
-            TemperatureCompensateSP.update(states, names, n);
-
-            bool rc = setTemperatureCompensation((TemperatureCompensateSP[INDI_ENABLED].getState() == ISS_ON));
-
-            if (!rc)
-            {
-                TemperatureCompensateSP.setState(IPS_ALERT);
-                TemperatureCompensateSP.reset();
-                TemperatureCompensateSP[last_index].setState(ISS_ON);
-                TemperatureCompensateSP.apply();
-                return false;
-            }
-
-            TemperatureCompensateSP.setState(IPS_OK);
-            TemperatureCompensateSP.apply();
-            return true;
-        }
-    }
-
-    return INDI::DefaultDevice::ISNewSwitch(dev, name, states, names, n);
-}
-
 bool Focap::ISSnoopDevice(XMLEle *root)
 {
     LI::snoop(root);
@@ -500,9 +506,7 @@ bool Focap::saveConfigItems(FILE *fp)
 {
     INDI::DefaultDevice::saveConfigItems(fp);
 
-    Focuser::saveConfigItems(fp);
-
-    return LI::saveConfigItems(fp);
+    return LI::saveConfigItems(fp) && FI::saveConfigItems(fp);
 }
 
 bool Focap::ping()
@@ -808,11 +812,28 @@ bool Focap::getStatus()
         }
     }
 
-    char motorStatus = *(response + 4) - '0';
+    char flatcapStatus = *(response + 4) - '0';
     char lightStatus = *(response + 5) - '0';
     char coverStatus = *(response + 6) - '0';
+    bool focuserStatus = isMoving();
 
     bool statusUpdated = false;
+
+    if (focuserStatus != prevFocuserStatus)
+    {
+        prevFocuserStatus = focuserStatus;
+
+        statusUpdated = true;
+
+        if (focuserStatus)
+        {
+            IUSaveText(&StatusT[3], "Moving");
+        }
+        else
+        {
+            IUSaveText(&StatusT[3], "Stopped");
+        }
+    }
 
     if (coverStatus != prevCoverStatus)
     {
@@ -880,20 +901,20 @@ bool Focap::getStatus()
         }
     }
 
-    if (motorStatus != prevMotorStatus)
+    if (flatcapStatus != prevFlatcapStatus)
     {
-        prevMotorStatus = motorStatus;
+        prevFlatcapStatus = flatcapStatus;
 
         statusUpdated = true;
 
-        switch (motorStatus)
+        switch (flatcapStatus)
         {
         case 0:
             IUSaveText(&StatusT[2], "Stopped");
             break;
 
         case 1:
-            IUSaveText(&StatusT[2], "Running");
+            IUSaveText(&StatusT[2], "Moving");
             break;
         }
     }
@@ -1064,8 +1085,12 @@ bool Focap::AbortFocuser()
     return sendCommand(":FQ#");
 }
 
-bool Focap::sendCommand(const char *command, char *response = nullptr, bool silent = true, int nret = 0)
+bool Focap::sendCommand(const char* command, char* response, int nret)
 {
+    if (isSimulation())
+    {
+        return true;
+    }
     if (command[0] == '>')
     {
         int nbytes_read = 0, nbytes_written = 0, rc = -1;
@@ -1073,29 +1098,23 @@ bool Focap::sendCommand(const char *command, char *response = nullptr, bool sile
         char errstr[MAXRBUF] = {0};
         int timeout = (command[1] == 'O' || command[1] == 'C' || command[1] == 'Z' || command[1] == 'A') ? FLAT_MOTOR_TIMEOUT : FLAT_TIMEOUT;
         tcflush(PortFD, TCIOFLUSH);
-        if (isSimulation())
-        {
-            return true;
-        }
-        else
-        {
-            snprintf(buffer, FLAT_CMD + 1, "%s#", command);
-            if ((rc = tty_write(PortFD, buffer, FLAT_CMD, &nbytes_written)) != TTY_OK)
-            {
-                tty_error_msg(rc, errstr, MAXRBUF);
-                LOGF_ERROR("%s write error: %s", command, errstr);
-                return false;
-            }
-            if ((rc = tty_nread_section(PortFD, response, FLAT_RES + 1, '#', timeout, &nbytes_read)) != TTY_OK)
-            {
-                tty_error_msg(rc, errstr, MAXRBUF);
-                LOGF_ERROR("%s read error: %s", command, errstr);
-                return false;
-            }
-            response[nbytes_read - 1] = 0;
 
-            return true;
+        snprintf(buffer, FLAT_CMD + 1, "%s#", command);
+        if ((rc = tty_write(PortFD, buffer, FLAT_CMD, &nbytes_written)) != TTY_OK)
+        {
+            tty_error_msg(rc, errstr, MAXRBUF);
+            LOGF_ERROR("%s write error: %s", command, errstr);
+            return false;
         }
+        if ((rc = tty_nread_section(PortFD, response, FLAT_RES + 1, '#', timeout, &nbytes_read)) != TTY_OK)
+        {
+            tty_error_msg(rc, errstr, MAXRBUF);
+            LOGF_ERROR("%s read error: %s", command, errstr);
+            return false;
+        }
+        response[nbytes_read - 1] = 0;
+        tcflush(PortFD, TCIOFLUSH);
+        return true;
     }
     else if (command[0] == ':')
     {
@@ -1107,8 +1126,7 @@ bool Focap::sendCommand(const char *command, char *response = nullptr, bool sile
         {
             char errstr[MAXRBUF] = {0};
             tty_error_msg(rc, errstr, MAXRBUF);
-            if (!silent)
-                LOGF_ERROR("Serial write error: %s.", errstr);
+            LOGF_ERROR("Serial write error: %s.", errstr);
             return false;
         }
 
@@ -1131,8 +1149,7 @@ bool Focap::sendCommand(const char *command, char *response = nullptr, bool sile
         {
             char errstr[MAXRBUF] = {0};
             tty_error_msg(rc, errstr, MAXRBUF);
-            if (!silent)
-                LOGF_ERROR("Serial read error: %s.", errstr);
+            LOGF_ERROR("Serial read error: %s.", errstr);
             return false;
         }
 
@@ -1147,6 +1164,7 @@ bool Focap::sendCommand(const char *command, char *response = nullptr, bool sile
         LOGF_ERROR("Command not recognised: %s", command);
         return false;
     }
+    return false;
 }
 
 void Focap::parkTimeoutHelper(void *context)

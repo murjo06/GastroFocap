@@ -193,27 +193,31 @@ void loop() {
     memset(buffer, 0, BUFFER_SIZE);
 	int i = 0;
 	bool isFocuserCommand = false;
+	bool read = false;
 	while(Serial.available()) {
-		if(i >= BUFFER_SIZE - 1) {
+		if(i >= BUFFER_SIZE - 2) {
 			break;
 		}
-		bool end = false;
 		char temp = Serial.read();
+		bool end = false;
 		switch(temp) {
 			case ':': {
 				isFocuserCommand = true;
+				read = true;
 				break;
 			}
 			case '>': {
 				isFocuserCommand = false;
+				read = true;
 				break;
 			}
 			case '#': {
 				end = true;
+				read = false;
 				break;
 			}
 			default: {
-				if(temp != '\n') {
+				if(temp != '\n' && read) {
 					buffer[i] = temp;
 					i++;
 				}
@@ -225,23 +229,15 @@ void loop() {
 		}
 	}
 	buffer[i] = '\0';
-	if(i >= 1) {
-		if(isFocuserCommand) {
-			focuserCommand(buffer);
-		} else {
-			flatcapCommand(buffer);
-		}
+	if(isFocuserCommand && i > 0) {
+		focuserCommand(buffer);
+	} else if(i > 3) {
+		flatcapCommand(buffer);
 	}
-    while(Serial.available()) {
-    	Serial.read();
-    }
 }
 
 void focuserCommand(char* command) {
 	String temp = String(command);
-	if(temp.startsWith("2")) {
-		temp = temp.substring(1);
-	}
 	String cmd, param;
 	int len = temp.length();
 	if(len >= 2) {
@@ -251,9 +247,6 @@ void focuserCommand(char* command) {
 	}
 	if(len > 2) {
 		param = temp.substring(2);
-	}
-	if(param.length()) {
-		return;
 	}
 	// home the motor, hard-coded, ignore parameters since we only have one motor
 	if(cmd.equalsIgnoreCase("PH")) {
@@ -271,7 +264,7 @@ void focuserCommand(char* command) {
 		sprintf(tempString, "%04lX#", currentPosition);
 		Serial.print(tempString);
 	}
-	// get the new motor position (target)
+	// get the target motor position
 	if(cmd.equalsIgnoreCase("GN")) {
 		char tempString[6];
 		sprintf(tempString, "%04lX#", targetPosition);
@@ -314,12 +307,12 @@ void focuserCommand(char* command) {
 			Serial.print("00#");
 		}
 	}
-	// set current motor position
+	// sync motor
 	if(cmd.equalsIgnoreCase("SP")) {
 		currentPosition = hexstr2long(param);
 		stepper.setCurrentPosition(currentPosition);
 	}
-	// set new motor position
+	// set target motor position
 	if(cmd.equalsIgnoreCase("SN")) {
 		targetPosition = hexstr2long(param);
 	}
@@ -358,12 +351,11 @@ void focuserCommand(char* command) {
 }
 
 void flatcapCommand(char* command) {
-	char temp[8];
-	char* cmd = command;
+	char temp[9];
     char* dat = command + 1;
 	char data[3] = {0};
 	strncpy(data, dat, 3);
-    switch(*cmd) {
+    switch(*command) {
         /*
         Ping device
         Request: >P000#
