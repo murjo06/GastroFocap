@@ -33,7 +33,7 @@ The protocol is split into two "parts", one for the flatcap and one for the focu
 | :GC#									| get temperature coefficient
 | :SC#									| set temperature coefficient
 | :GI#									| get motor status (01 moving, 00 still)
-| :SP#									| set current motor position
+| :SP#									| sync motor
 | :SN#									| set new motor position
 | :FG#									| initiate move
 | :FQ#									| abort motion
