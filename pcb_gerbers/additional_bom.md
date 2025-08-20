@@ -1,0 +1,8 @@
+- ESP32-S3-WROOM-1U-N4/8/16 (do not buy a module with PSRAM)
+- standard 5.5 x 2.1 mm DC jack (https://www.aliexpress.com/item/32881111194.html)
+- USB B port (https://www.aliexpress.com/item/1005006137172694.html)
+- pushbutton switch 6 x 3 mm (https://www.aliexpress.com/item/4000810443449.html) (x2)
+- 15 uH inductor (at least 3.5 A rating, 4 A saturation) (https://www.aliexpress.com/item/1005007254030376.html?search_p4p_id=202507230157407260702968674610001609163_6)
+- 470 uF 25 V electrolytic capacitor (SMD type, 10 x 10 mm) (https://www.aliexpress.com/item/1005006729274418.html)
+- 100 uF 16 V electrolytic capacitor (THT, D5.0 x P2.0 mm) (I recommend buying a set like this: https://www.aliexpress.com/item/1005008827990549.html)
+- XH JST 2.54 mm pin pitch port (2 pin, 3 pin x 2, 4 pin)

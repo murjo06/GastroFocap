@@ -22,3 +22,6 @@ This firmware uses the M24C64 EEPROM IC by default, but that can be changed to u
 
 
 The communication protocol requests and responses are located in [communications.md](communication.md).
+
+
+I've provided gerbers for the PCB inside the [pcb_gerbers](/pcb_gerbers/) folder. You may use these (as well as other files in this repository) as per the [license file](/LICENSE). I recommend using JLCPCB for the manufacturing, since that is what I used, and are therefore the gerbers and BOM suited to work. You can leave all settings as default, just make sure to correct all the errors in the pick-and-place file, since there are many. JLCPCB allows you to do that in the website. You'll also need some additional components that aren't in the BOM (rather [here](/pcb_gerbers/additional_bom.md)) and have to be manually soldered since it's cheaper that way.
