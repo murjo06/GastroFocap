@@ -83,8 +83,7 @@ bool Focap::initProperties()
     addPollPeriodControl();
 
     serialConnection = new Connection::Serial(this);
-    serialConnection->registerHandshake([&]()
-                                        { return Handshake(); });
+    serialConnection->registerHandshake([&]() { return Handshake(); });
     registerConnection(serialConnection);
 
     return true;
@@ -151,12 +150,6 @@ bool Focap::Handshake()
 
     tcflush(PortFD, TCIOFLUSH);
 
-    if (!ping())
-    {
-        LOG_ERROR("Device ping failed.");
-        return false;
-    }
-
     syncDriverInfo();
 
     return Ack();
@@ -168,7 +161,7 @@ bool Focap::Ack()
 
     for (int i = 0; i < 3; i++)
     {
-        if (readVersion())
+        if (ping())
         {
             success = true;
             break;
@@ -252,7 +245,7 @@ bool Focap::readPosition()
         FocusAbsPosNP[0].setValue(pos);
     else
     {
-        //LOGF_ERROR("Unknown error: focuser position value (%s)", res);
+        // LOGF_ERROR("Unknown error: focuser position value (%s)", res);
         return false;
     }
 
@@ -1085,7 +1078,7 @@ bool Focap::AbortFocuser()
     return sendCommand(":FQ#");
 }
 
-bool Focap::sendCommand(const char* command, char* response, int nret)
+bool Focap::sendCommand(const char *command, char *response, int nret)
 {
     if (isSimulation())
     {

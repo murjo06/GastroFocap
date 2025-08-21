@@ -33,14 +33,14 @@
 #define DRIVER_ADDRESS 0b00 		// TMC2209 driver address according to MS1 and MS2
 #define R_SENSE 0.1f				// my board uses R100 resistors because of the JLC parts library
 
-#define RMS_CURRENT 600
+#define RMS_CURRENT 500
 
 #define TEMP 13
 
 #define PERIOD_MS 2					// at most 1 / STEPPER_SPEED
 
-#define STEPPER_SPEED 200
-#define STEPPER_ACCELERATION 800
+#define STEPPER_SPEED 50
+#define STEPPER_ACCELERATION 100
 
 #define SERVO_INCREMENT 1			// in degrees
 #define SERVO_DELAY	20				// delay in ms after each servo increment, speed of the servo can be calculated by
@@ -136,11 +136,11 @@ void setup() {
 	#endif
 	Wire.begin(SDA, SCL);
 	Wire.setClock(100000);
-	parkAngle = (uint16_t)eepromReadLong(PARK_ANGLE_ADDRESS, 2) % 360;
+	parkAngle = (uint16_t)(eepromReadLong(PARK_ANGLE_ADDRESS, 2) % 360);
 
-	unparkAngle = (uint16_t)eepromReadLong(UNPARK_ANGLE_ADDRESS, 2) % 360;
+	unparkAngle = (uint16_t)(eepromReadLong(UNPARK_ANGLE_ADDRESS, 2) % 360);
 
-	brightness = (uint8_t)eepromReadByte(BRIGHTNESS_ADDRESS) % 256;
+	brightness = (uint8_t)(eepromReadByte(BRIGHTNESS_ADDRESS) % 256);
 	coverStatus = (uint8_t)eepromReadByte(SHUTTER_STATUS_ADDRESS);
 
 	currentPosition = eepromReadLong(FOCUSER_POSITION_ADDRESS, 4);

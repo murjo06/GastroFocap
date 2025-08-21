@@ -12,7 +12,7 @@ sudo make install
 
 ### Uploading the firmware
 
-Upload the [esp32.ino](esp32.ino) file to an ESP32 S3. If your module has PSRAM, you'll have to change the pins, since the PSRAM uses pins 35, 36, and 37 on the S3.
+Upload the [esp32.ino](esp32.ino) file to an ESP32 S3. If your module has PSRAM, you'll have to change the pins, since the PSRAM uses pins 35, 36, and 37 on the S3. The PCB won't work in that case.
 
 
 Alternatively, you can use an Arduino Nano and upload the [arduino.ino](arduino.ino) file, but this only contains flatcap functionality.

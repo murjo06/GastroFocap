@@ -31,7 +31,7 @@ class Focap : public INDI::DefaultDevice, public INDI::LightBoxInterface, public
         static void timedMoveHelper(void* context);
 
     protected:
-        // From INDI::Focuser
+        // From INDI::FocuserInterface
         virtual IPState MoveAbsFocuser(uint32_t targetTicks) override;
         virtual IPState MoveRelFocuser(FocusDirection dir, uint32_t ticks) override;
         virtual bool SyncFocuser(uint32_t ticks) override;
@@ -40,14 +40,17 @@ class Focap : public INDI::DefaultDevice, public INDI::LightBoxInterface, public
         // From INDI::DefaultDevice
         void TimerHit() override;
         bool saveConfigItems(FILE* fp) override;
-        virtual bool Handshake();
 
+        // From INDI::DustCapInterface
         virtual IPState ParkCap() override;
         virtual IPState UnParkCap() override;
 
+        // From INDI::LightBoxInterface
         virtual bool SetLightBoxBrightness(uint16_t value) override;
         virtual bool EnableLightBox(bool enable) override;
 
+        virtual bool Handshake();
+        
     private:
         bool getStartupData();
         bool ping();
