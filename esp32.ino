@@ -186,6 +186,26 @@ void setup() {
 }
 
 void loop() {
+	if(stepper.distanceToGo() != 0) {
+		millisLastMove = millis();
+		currentPosition = stepper.currentPosition();
+	} else {
+		if(millis() - millisLastMove > DISABLE_DELAY) {
+			if(lastSavedPosition != currentPosition) {
+				#ifndef EXTERNAL_EEPROM
+				EEPROM.put(FOCUSER_POSITION_ADDRESS, currentPosition);
+				EEPROM.commit();
+				#else
+				eepromWriteLong(FOCUSER_POSITION_ADDRESS, currentPosition, 4);
+				#endif
+				lastSavedPosition = currentPosition;
+			}
+			if(isEnabled) {
+				stepper.disableOutputs();
+				isEnabled = false;
+			}
+		}
+	}
     if(Serial.available() < 3) {
 		return;
 	}
@@ -247,11 +267,6 @@ void focuserCommand(char* command) {
 	}
 	if(len > 2) {
 		param = temp.substring(2);
-	}
-	// home the motor, hard-coded, ignore parameters since we only have one motor
-	if(cmd.equalsIgnoreCase("PH")) {
-		stepper.setCurrentPosition(8000);
-		stepper.moveTo(0);
 	}
 	// firmware value, always return "10"
 	if(cmd.equalsIgnoreCase("GV")) {
@@ -325,28 +340,8 @@ void focuserCommand(char* command) {
 	// stop a move
 	if(cmd.equalsIgnoreCase("FQ")) {
 		stepper.stop();
-	}
-	// move motor if not done
-	if(stepper.distanceToGo() != 0) {
-		millisLastMove = millis();
-		currentPosition = stepper.currentPosition();
-	} else {
-		// check if motor wasn't moved for several seconds and save position and disable motors
-		if(millis() - millisLastMove > DISABLE_DELAY) {
-			if(lastSavedPosition != currentPosition) {
-				#ifndef EXTERNAL_EEPROM
-				EEPROM.put(FOCUSER_POSITION_ADDRESS, currentPosition);
-				EEPROM.commit();
-				#else
-				eepromWriteLong(FOCUSER_POSITION_ADDRESS, currentPosition, 4);
-				#endif
-				lastSavedPosition = currentPosition;
-			}
-			if(isEnabled) {
-				stepper.disableOutputs();
-				isEnabled = false;
-			}
-		}
+		stepper.disableOutputs();
+		isEnabled = false;
 	}
 }
 
