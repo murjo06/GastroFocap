@@ -91,13 +91,12 @@ class Focap : public INDI::DefaultDevice, public INDI::LightBoxInterface, public
         Connection::Serial *serialConnection{ nullptr };
 
         bool Ack();
-        bool sendCommand(const char* cmd, char* res = nullptr, int nret = 0);
+        bool sendCommand(const char* cmd, char* res = nullptr);
 
         void GetFocusParams();
         bool readTemperature();
 		bool readTemperatureCoefficient();
         bool readPosition();
-        bool readVersion();
         bool isMoving();
 
         bool MoveFocuser(uint32_t position);

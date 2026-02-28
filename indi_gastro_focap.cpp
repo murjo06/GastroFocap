@@ -13,10 +13,8 @@
 
 static std::unique_ptr<Focap> focap(new Focap());
 
-#define FLAT_CMD 6
-#define FLAT_RES 8
+#define FLAT_CMD 7
 #define FLAT_TIMEOUT 5
-#define FLAT_MOTOR_TIMEOUT 10
 
 #define MIN_ANGLE 0.0
 #define MAX_ANGLE 360.0
@@ -37,9 +35,8 @@ bool Focap::initProperties()
 
     IUFillText(&StatusT[0], "COVER", "Cover", nullptr);
     IUFillText(&StatusT[1], "LIGHT", "Light", nullptr);
-    IUFillText(&StatusT[2], "COVER_MOTOR", "Cover motor", nullptr);
-    IUFillText(&StatusT[3], "FOCUSER", "Focuser", nullptr);
-    IUFillTextVector(&StatusTP, StatusT, 4, getDeviceName(), "Status", "Status", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
+    IUFillText(&StatusT[2], "FOCUSER", "Focuser", nullptr);
+    IUFillTextVector(&StatusTP, StatusT, 3, getDeviceName(), "Status", "Status", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
 
     IUFillText(&FirmwareT[0], "VERSION", "Version", nullptr);
     IUFillTextVector(&FirmwareTP, FirmwareT, 1, getDeviceName(), "Firmware", "Firmware", MAIN_CONTROL_TAB, IP_RO, 60, IPS_IDLE);
@@ -171,20 +168,6 @@ bool Focap::Ack()
     return success;
 }
 
-bool Focap::readVersion()
-{
-    char res[RES_LENGTH] = {0};
-
-    if (sendCommand(":GV#", res, 2) == false)
-    {
-        return false;
-    }
-
-    LOGF_INFO("Detected firmware version %c.%c", res[0], res[1]);
-
-    return true;
-}
-
 bool Focap::readTemperature()
 {
     char res[RES_LENGTH] = {0};
@@ -195,7 +178,7 @@ bool Focap::readTemperature()
     }
 
     uint32_t temp = 0;
-    int rc = sscanf(res, "%X", &temp);
+    int rc = sscanf(res, "%x", &temp);
     if (rc > 0)
     {
         // Signed hex
@@ -217,11 +200,10 @@ bool Focap::readTemperatureCoefficient()
     if (sendCommand(":GC#", res) == false)
         return false;
 
-    uint8_t coefficient = 0;
-    int rc = sscanf(res, "%hhX", &coefficient);
+    uint16_t coefficient = 0;
+    int rc = sscanf(res, "%x", &coefficient);
     if (rc > 0)
-        // Signed HEX of two digits
-        TemperatureSettingNP[1].setValue(static_cast<int8_t>(coefficient) / 2.0);
+        TemperatureSettingNP[Coefficient].setValue(static_cast<int16_t>(coefficient) / 256.0);
     else
     {
         LOGF_ERROR("Unknown error: focuser temperature coefficient value (%s)", res);
@@ -239,7 +221,7 @@ bool Focap::readPosition()
         return false;
 
     int32_t pos;
-    int rc = sscanf(res, "%X#", &pos);
+    int rc = sscanf(res, "%x#", &pos);
 
     if (rc > 0)
         FocusAbsPosNP[0].setValue(pos);
@@ -269,40 +251,35 @@ bool Focap::isMoving()
     return false;
 }
 
+// ? what is this ?
 bool Focap::setTemperatureCalibration(double calibration)
 {
     char cmd[RES_LENGTH] = {0};
-    uint8_t hex = static_cast<int8_t>(calibration * 2) & 0xFF;
-    snprintf(cmd, RES_LENGTH, ":PO%02X#", hex);
+    uint8_t hex = static_cast<int8_t>(calibration * 2);
+    snprintf(cmd, RES_LENGTH, ":PO%02x#", hex);
     return sendCommand(cmd);
 }
 
 bool Focap::setTemperatureCoefficient(double coefficient)
 {
     char cmd[RES_LENGTH] = {0};
-    uint8_t hex = static_cast<int8_t>(coefficient * 2) & 0xFF;
-    snprintf(cmd, RES_LENGTH, ":SC%02X#", hex);
+    uint16_t hex = static_cast<int16_t>(coefficient * 256.0);
+    snprintf(cmd, RES_LENGTH, ":SC%04x#", hex);
     return sendCommand(cmd);
 }
 
 bool Focap::SyncFocuser(uint32_t ticks)
 {
     char cmd[RES_LENGTH] = {0};
-    snprintf(cmd, RES_LENGTH, ":SP%04X#", ticks);
+    snprintf(cmd, RES_LENGTH, ":SP%04x#", ticks);
     return sendCommand(cmd);
 }
 
 bool Focap::MoveFocuser(uint32_t position)
 {
     char cmd[RES_LENGTH] = {0};
-    snprintf(cmd, RES_LENGTH, ":SN%04X#", position);
-    // Set Position First
+    snprintf(cmd, RES_LENGTH, ":SN%04x#", position);
     if (sendCommand(cmd) == false)
-    {
-        return false;
-    }
-    // Now start motion toward position
-    if (sendCommand(":FG#") == false)
     {
         return false;
     }
@@ -313,7 +290,7 @@ bool Focap::MoveFocuser(uint32_t position)
 bool Focap::setTemperatureCompensation(bool enable)
 {
     char cmd[RES_LENGTH] = {0};
-    snprintf(cmd, RES_LENGTH, ":%c#", enable ? '+' : '-');
+    snprintf(cmd, RES_LENGTH, ":TC%c#", enable ? '1' : '0');
     return sendCommand(cmd);
 }
 
@@ -504,24 +481,8 @@ bool Focap::saveConfigItems(FILE *fp)
 
 bool Focap::ping()
 {
-    char response[FLAT_RES] = {0};
-
-    if (!sendCommand(">P000", response))
-        return false;
-
-    char productString[3] = {0};
-    snprintf(productString, 3, "%s", response + 2);
-
-    int rc = sscanf(productString, "%hu", &productID);
-    if (rc <= 0)
-    {
-        LOGF_ERROR("Unable to parse input (%s)", response);
-        return false;
-    }
-
-    // syncDriverInfo() used to be here, not sure if I need it now
-
-    return true;
+    char response[RES_LENGTH];
+    return sendCommand(">P000#", response);
 }
 
 bool Focap::getStartupData()
@@ -543,22 +504,9 @@ IPState Focap::ParkCap()
         return IPS_BUSY;
     }
 
-    char response[FLAT_RES];
-    if (!sendCommand(">C000", response))
-        return IPS_ALERT;
-
-    char expectedResponse[FLAT_RES];
-    snprintf(expectedResponse, FLAT_RES, "*C%02d", productID);
-
-    if (strstr(response, expectedResponse))
-    {
-        // Set cover status to random value outside of range to force it to refresh
-        prevCoverStatus = 10;
-
-        IERmTimer(parkTimeoutID);
-        parkTimeoutID = IEAddTimer(30000, parkTimeoutHelper, this);
+    char response[RES_LENGTH];
+    if(sendCommand(">C000#", response))
         return IPS_BUSY;
-    }
     else
         return IPS_ALERT;
 }
@@ -571,23 +519,9 @@ IPState Focap::UnParkCap()
         return IPS_BUSY;
     }
 
-    char response[FLAT_RES];
-    if (!sendCommand(">O000", response))
-        return IPS_ALERT;
-
-    char expectedResponse[FLAT_RES];
-    snprintf(expectedResponse, FLAT_RES, "*O%02d", productID);
-
-    if (strstr(response, expectedResponse))
-    {
-        // Set cover status to random value outside of range to force it to refresh
-        prevCoverStatus = 10;
-
-        IERmTimer(unparkTimeoutID);
-        unparkTimeoutID = IEAddTimer(30000, unparkTimeoutHelper, this);
-
+    char response[RES_LENGTH];
+    if(sendCommand(">O000#", response))
         return IPS_BUSY;
-    }
     else
         return IPS_ALERT;
 }
@@ -601,16 +535,16 @@ bool Focap::setParkAngle(uint16_t value)
         return true;
     }
 
-    char command[FLAT_CMD] = {0};
-    char response[FLAT_RES] = {0};
+    char command[FLAT_CMD];
+    char response[RES_LENGTH];
 
-    snprintf(command, FLAT_CMD, ">Z%03d", value);
+    snprintf(command, FLAT_CMD, ">Z%03d#", value);
 
     if (!sendCommand(command, response))
         return false;
 
     char angleString[4] = {0};
-    snprintf(angleString, 4, "%s", response + 4);
+    snprintf(angleString, 4, "%s", response + 2);
 
     int angleValue = 0;
     int rc = sscanf(angleString, "%d", &angleValue);
@@ -636,19 +570,16 @@ bool Focap::setUnparkAngle(uint16_t value)
         return true;
     }
 
-    char command[FLAT_CMD] = {0};
-    char response[FLAT_RES] = {0};
+    char command[FLAT_CMD];
+    char response[RES_LENGTH];
 
-    snprintf(command, FLAT_CMD, ">A%03d", value);
+    snprintf(command, FLAT_CMD, ">A%03d#", value);
 
     if (!sendCommand(command, response))
         return false;
 
-    char angleString[4] = {0};
-    snprintf(angleString, 4, "%s", response + 4);
-
     int angleValue = 0;
-    int rc = sscanf(angleString, "%d", &angleValue);
+    int rc = sscanf(response, "*A%d#", &angleValue);
 
     if (rc <= 0)
     {
@@ -669,15 +600,12 @@ bool Focap::getParkAngle()
         return true;
     }
 
-    char response[FLAT_RES] = {0};
-    if (!sendCommand(">K000", response))
+    char response[RES_LENGTH];
+    if (!sendCommand(">K000#", response))
         return false;
 
-    char angleString[4] = {0};
-    snprintf(angleString, 4, "%s", response + 4);
-
     int angleValue = 0;
-    int rc = sscanf(angleString, "%d", &angleValue);
+    int rc = sscanf(response, "*K%d#", &angleValue);
 
     if (rc <= 0)
     {
@@ -698,12 +626,12 @@ bool Focap::getUnparkAngle()
         return true;
     }
 
-    char response[FLAT_RES] = {0};
-    if (!sendCommand(">H000", response))
+    char response[RES_LENGTH];
+    if (!sendCommand(">H000#", response))
         return false;
 
     char angleString[4] = {0};
-    snprintf(angleString, 4, "%s", response + 4);
+    snprintf(angleString, 4, "%s", response + 2);
 
     int angleValue = 0;
     int rc = sscanf(angleString, "%d", &angleValue);
@@ -722,8 +650,6 @@ bool Focap::getUnparkAngle()
 
 bool Focap::EnableLightBox(bool enable)
 {
-    char command[FLAT_CMD];
-    char response[FLAT_RES];
 
     if (ParkCapSP[1].getState() == ISS_ON)
     {
@@ -735,37 +661,13 @@ bool Focap::EnableLightBox(bool enable)
     {
         return true;
     }
-
-    if (enable)
-    {
-        strncpy(command, ">L000", FLAT_CMD);
-    }
-    else
-    {
-        strncpy(command, ">D000", FLAT_CMD);
-    }
-
-    if (!sendCommand(command, response))
-    {
-        return false;
-    }
-
-    char expectedResponse[FLAT_RES];
-    if (enable)
-    {
-        snprintf(expectedResponse, FLAT_RES, "*L%02d000", productID);
-    }
-    else
-    {
-        snprintf(expectedResponse, FLAT_RES, "*D%02d000", productID);
-    }
-
-    return (strstr(response, expectedResponse));
+    char response[RES_LENGTH];
+    return sendCommand(enable ? ">L000#" : ">D000#", response);
 }
 
 bool Focap::getStatus()
 {
-    char response[FLAT_RES];
+    char response[RES_LENGTH];
 
     if (isSimulation())
     {
@@ -799,16 +701,15 @@ bool Focap::getStatus()
     }
     else
     {
-        if (!sendCommand(">S000", response))
+        if (!sendCommand(">S000#", response))
         {
             return false;
         }
     }
 
-    char flatcapStatus = *(response + 4) - '0';
-    char lightStatus = *(response + 5) - '0';
-    char coverStatus = *(response + 6) - '0';
-    bool focuserStatus = isMoving();
+    char focuserStatus = *(response + 2) - '0';
+    char lightStatus = *(response + 3) - '0';
+    char coverStatus = *(response + 4) - '0';
 
     bool statusUpdated = false;
 
@@ -820,11 +721,11 @@ bool Focap::getStatus()
 
         if (focuserStatus)
         {
-            IUSaveText(&StatusT[3], "Moving");
+            IUSaveText(&StatusT[2], "Moving");
         }
         else
         {
-            IUSaveText(&StatusT[3], "Stopped");
+            IUSaveText(&StatusT[2], "Stopped");
         }
     }
 
@@ -837,11 +738,7 @@ bool Focap::getStatus()
         switch (coverStatus)
         {
         case 0:
-            IUSaveText(&StatusT[0], "Not Open/Closed");
-            break;
-
-        case 1:
-            IUSaveText(&StatusT[0], "Closed");
+            IUSaveText(&StatusT[0], "Parked");
             if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
             {
                 ParkCapSP.reset();
@@ -852,8 +749,8 @@ bool Focap::getStatus()
             }
             break;
 
-        case 2:
-            IUSaveText(&StatusT[0], "Open");
+        case 1:
+            IUSaveText(&StatusT[0], "Unparked");
             if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
             {
                 ParkCapSP.reset();
@@ -864,7 +761,29 @@ bool Focap::getStatus()
             }
             break;
 
+        case 2:
+            IUSaveText(&StatusT[0], "Parking");
+            if (ParkCapSP.getState() == IPS_OK || ParkCapSP.getState() == IPS_IDLE)
+            {
+                ParkCapSP.reset();
+                ParkCapSP[0].setState(ISS_ON);
+                ParkCapSP.setState(IPS_BUSY);
+                ParkCapSP.apply();
+            }
+            break;
+
         case 3:
+            IUSaveText(&StatusT[0], "Unparking");
+            if (ParkCapSP.getState() == IPS_OK || ParkCapSP.getState() == IPS_IDLE)
+            {
+                ParkCapSP.reset();
+                ParkCapSP[1].setState(ISS_ON);
+                ParkCapSP.setState(IPS_BUSY);
+                ParkCapSP.apply();
+            }
+            break;
+
+        default:
             IUSaveText(&StatusT[0], "Timed out");
             break;
         }
@@ -894,24 +813,6 @@ bool Focap::getStatus()
         }
     }
 
-    if (flatcapStatus != prevFlatcapStatus)
-    {
-        prevFlatcapStatus = flatcapStatus;
-
-        statusUpdated = true;
-
-        switch (flatcapStatus)
-        {
-        case 0:
-            IUSaveText(&StatusT[2], "Stopped");
-            break;
-
-        case 1:
-            IUSaveText(&StatusT[2], "Moving");
-            break;
-        }
-    }
-
     if (statusUpdated)
     {
         IDSetText(&StatusTP, nullptr);
@@ -929,14 +830,14 @@ bool Focap::getFirmwareVersion()
         return true;
     }
 
-    char response[FLAT_RES] = {0};
-    if (!sendCommand(">V000", response))
+    char response[RES_LENGTH];
+    if (!sendCommand(">V000#", response))
     {
         return false;
     }
 
     char versionString[4] = {0};
-    snprintf(versionString, 4, "%s", response + 4);
+    snprintf(versionString, 4, "%s", response + 2);
     IUSaveText(&FirmwareT[0], versionString);
     IDSetText(&FirmwareTP, nullptr);
 
@@ -1004,14 +905,14 @@ bool Focap::getBrightness()
         return true;
     }
 
-    char response[FLAT_RES] = {0};
-    if (!sendCommand(">J000", response))
+    char response[RES_LENGTH];
+    if (!sendCommand(">J000#", response))
     {
         return false;
     }
 
     char brightnessString[4] = {0};
-    snprintf(brightnessString, 4, "%s", response + 4);
+    snprintf(brightnessString, 4, "%s", response + 2);
 
     int brightnessValue = 0;
     int rc = sscanf(brightnessString, "%d", &brightnessValue);
@@ -1041,10 +942,10 @@ bool Focap::SetLightBoxBrightness(uint16_t value)
         return true;
     }
 
-    char command[FLAT_CMD] = {0};
-    char response[FLAT_RES] = {0};
+    char command[FLAT_CMD];
+    char response[RES_LENGTH];
 
-    snprintf(command, FLAT_CMD, ">B%03d", value);
+    snprintf(command, FLAT_CMD, ">B%03d#", value);
 
     if (!sendCommand(command, response))
     {
@@ -1052,7 +953,7 @@ bool Focap::SetLightBoxBrightness(uint16_t value)
     }
 
     char brightnessString[4] = {0};
-    snprintf(brightnessString, 4, "%s", response + 4);
+    snprintf(brightnessString, 4, "%s", response + 2);
 
     int brightnessValue = 0;
     int rc = sscanf(brightnessString, "%d", &brightnessValue);
@@ -1078,86 +979,43 @@ bool Focap::AbortFocuser()
     return sendCommand(":FQ#");
 }
 
-bool Focap::sendCommand(const char *command, char *response, int nret)
+bool Focap::sendCommand(const char *command, char *response)
 {
     if (isSimulation())
     {
         return true;
     }
-    if (command[0] == '>')
+    int nbytes_written = 0, nbytes_read = 0, rc = -1;
+    tcflush(PortFD, TCIOFLUSH);
+    LOGF_DEBUG("CMD %s", command);
+
+    if ((rc = tty_write_string(PortFD, command, &nbytes_written)) != TTY_OK)
     {
-        int nbytes_read = 0, nbytes_written = 0, rc = -1;
-        char buffer[FLAT_CMD + 1] = {0};
         char errstr[MAXRBUF] = {0};
-        int timeout = (command[1] == 'O' || command[1] == 'C' || command[1] == 'Z' || command[1] == 'A') ? FLAT_MOTOR_TIMEOUT : FLAT_TIMEOUT;
-        tcflush(PortFD, TCIOFLUSH);
-
-        snprintf(buffer, FLAT_CMD + 1, "%s#", command);
-        if ((rc = tty_write(PortFD, buffer, FLAT_CMD, &nbytes_written)) != TTY_OK)
-        {
-            tty_error_msg(rc, errstr, MAXRBUF);
-            LOGF_ERROR("%s write error: %s", command, errstr);
-            return false;
-        }
-        if ((rc = tty_nread_section(PortFD, response, FLAT_RES + 1, '#', timeout, &nbytes_read)) != TTY_OK)
-        {
-            tty_error_msg(rc, errstr, MAXRBUF);
-            LOGF_ERROR("%s read error: %s", command, errstr);
-            return false;
-        }
-        response[nbytes_read - 1] = 0;
-        tcflush(PortFD, TCIOFLUSH);
-        return true;
-    }
-    else if (command[0] == ':')
-    {
-        int nbytes_written = 0, nbytes_read = 0, rc = -1;
-        tcflush(PortFD, TCIOFLUSH);
-        LOGF_DEBUG("CMD <%s>", command);
-
-        if ((rc = tty_write_string(PortFD, command, &nbytes_written)) != TTY_OK)
-        {
-            char errstr[MAXRBUF] = {0};
-            tty_error_msg(rc, errstr, MAXRBUF);
-            LOGF_ERROR("Serial write error: %s.", errstr);
-            return false;
-        }
-
-        if (response == nullptr)
-        {
-            tcdrain(PortFD);
-            return true;
-        }
-
-        // this is to handle the GV command which doesn't return the terminator, use the number of chars expected
-        if (nret == 0)
-        {
-            rc = tty_nread_section(PortFD, response, RES_LENGTH, '#', ML_TIMEOUT, &nbytes_read);
-        }
-        else
-        {
-            rc = tty_read(PortFD, response, nret, ML_TIMEOUT, &nbytes_read);
-        }
-        if (rc != TTY_OK)
-        {
-            char errstr[MAXRBUF] = {0};
-            tty_error_msg(rc, errstr, MAXRBUF);
-            LOGF_ERROR("Serial read error: %s.", errstr);
-            return false;
-        }
-
-        LOGF_DEBUG("RES %s", response);
-
-        tcflush(PortFD, TCIOFLUSH);
-
-        return true;
-    }
-    else if (command[0] != ':' && command[0] != '>')
-    {
-        LOGF_ERROR("Command not recognised: %s", command);
+        tty_error_msg(rc, errstr, MAXRBUF);
+        LOGF_ERROR("Serial write error: %s.", errstr);
         return false;
     }
-    return false;
+
+    if (response == nullptr)
+    {
+        tcdrain(PortFD);
+        return true;
+    }
+
+    if ((rc = tty_nread_section(PortFD, response, RES_LENGTH - 1, '#', ML_TIMEOUT, &nbytes_read)) != TTY_OK)
+    {
+        char errstr[MAXRBUF] = {0};
+        tty_error_msg(rc, errstr, MAXRBUF);
+        LOGF_ERROR("Serial read error: %s.", errstr);
+        return false;
+    }
+
+    response[nbytes_read - 1] = 0;
+
+    LOGF_DEBUG("RES %s", response);
+    tcflush(PortFD, TCIOFLUSH);
+    return true;
 }
 
 void Focap::parkTimeoutHelper(void *context)

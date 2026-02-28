@@ -1,59 +1,52 @@
-#include <s3servo.h>
-#include <AccelStepper.h>
+#include <ESPServo.h>
+#include <AccelStepperEncoder.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <TMCStepper.h>
 #include <Streaming.h>
-#include <Ticker.h>
+#include <Wire.h>
 
 #define EXTERNAL_EEPROM
 //#define USE_WC_EEPROM
 
-#ifdef EXTERNAL_EEPROM
-#include <Wire.h>
-#else
+#ifndef EXTERNAL_EEPROM
 #include <EEPROM.h>
 #endif
 
-#define BUFFER_SIZE 40
+#define COUNTS_PER_REVOLUTION (1 << 14)
+#define ENCODER_MOTOR_RATIO 30.4	// number of encoder counts that equal one step
 
-#define LED 2
+#define BUFFER_SIZE 32
+
+#define LED 1
 #define SERVO 38
 
 #define SDA 37
 #define SCL 36
 #define EEPROM_WC 35				// write control for M24C64, drive high to prevent writing, toggled by USE_WC_EEPROM
 #define EEPROM_ADDRESS 0b1010000
+#define ENCODER_ADDRESS 0b0000110
 
-#define EN 17						// enable
-#define DIR 15						// direction
-#define STEP 16						// step
-#define TX 8						// receive pin 
+#define EN 3						// enable
+#define DIR 16						// direction
+#define STEP 17						// step
+#define TX 8						// receive pin
 #define RX 18						// transmit pin
-#define DRIVER_ADDRESS 0b00 		// TMC2209 driver address according to MS1 and MS2
+#define TMC_ADDRESS 0b00	 		// TMC2209 driver address according to MS1 and MS2
 #define R_SENSE 0.1f				// my board uses R100 resistors because of the JLC parts library
 
 #define RMS_CURRENT 500
 
 #define TEMP 13
 
-#define PERIOD_MS 2					// at most 1 / STEPPER_SPEED
-
-#define STEPPER_SPEED 50
-#define STEPPER_ACCELERATION 100
+#define STEPPER_SPEED 25
+#define STEPPER_ACCELERATION 25
 
 #define SERVO_INCREMENT 1			// in degrees
-#define SERVO_DELAY	20				// delay in ms after each servo increment, speed of the servo can be calculated by
-                                    // SERVO_INCREMENT / SERVO_DELAY, the result is in deg/ms
+#define SERVO_INTERVAL 20			// delay in ms after each servo increment, speed of the servo can be calculated by
+                                    // SERVO_INCREMENT / SERVO_INTERVAL, result is in deg/ms
 
 #define DISABLE_DELAY 15000
-
-s3servo servo;
-
-enum motorStatuses {
-	STOPPED,
-	RUNNING
-};
 
 enum lightStatuses {
 	OFF,
@@ -61,14 +54,15 @@ enum lightStatuses {
 };
 
 enum shutterStatuses {
-	UNKNOWN,
 	PARKED,
-	UNPARKED
+	UNPARKED,
+	PARKING,
+	UNPARKING
 };
 
 /*
 ! IMPORTANT:
-Both PARK_ANGLE_ADDRESS and UNPARK_ANGLE_ADDRESS store 16 bit integers (255 just isn't enough for the positions).
+PARK_ANGLE_ADDRESS, UNPARK_ANGLE_ADDRESS and ENCODER_COUNTS store 16 bit integers (255 just isn't enough for the positions).
 That means they use two EEPROM addresses each (parkAngle uses addresses 1 and 2, for example)
 
 EEPROM storage is in little-endian, since this is what the ESP32 uses normally
@@ -78,34 +72,38 @@ enum addresses {
 	PARK_ANGLE_ADDRESS = 1,
 	UNPARK_ANGLE_ADDRESS = 3,
 	SHUTTER_STATUS_ADDRESS = 5,
-    FOCUSER_POSITION_ADDRESS = 6            // takes 4 bytes
+    ENCODER_COUNTS_ADDRESS = 6,
+	ENCODER_TURNS_ADDRESS = 8
 };
 
-uint8_t deviceId = 99;				// id for gastro flatcap
-uint8_t motorStatus = STOPPED;
+uint8_t deviceId = 99;				// id for gastro focap
 uint8_t lightStatus = OFF;
-uint8_t coverStatus = PARKED;
+uint8_t shutterStatus = PARKED;
 uint8_t brightness = 0;
 uint16_t parkAngle = 0;
 uint16_t unparkAngle = 0;
-uint16_t servoPosition = 0;
 
-AccelStepper stepper(AccelStepper::DRIVER, STEP, DIR);
+AccelStepperEncoder stepper(AccelStepperEncoder::DRIVER, STEP, DIR);
 
-TMC2209Stepper TMCdriver(&Serial2, R_SENSE, DRIVER_ADDRESS);
+TMC2209Stepper TMCdriver(&Serial2, R_SENSE, TMC_ADDRESS);
 
 OneWire oneWire(TEMP);
 DallasTemperature sensors(&oneWire);
 
-float tCoeff = 0;
+ESPServo servo;
 
-unsigned long currentPosition = 0;
-unsigned long targetPosition = 0;
-unsigned long lastSavedPosition = 0;
-long millisLastMove = 0;
+float temperatureCoefficient = 1.5f;		// calculated expansion coefficient in steps/K (scope dependent)
+
+uint32_t lastSavedPosition = 0;
+int counts = 0;
+uint32_t encoderPosition = 0;
+uint16_t encoderZero = 0;
+int8_t turns = 0;
+uint32_t millisLastMove = 0;
 bool isEnabled = false;
+bool movingAllowed = false;
 
-Ticker stepperTicker;
+bool temperatureCompensation = false;
 
 void setup() {
     pinMode(LED, OUTPUT);
@@ -127,8 +125,11 @@ void setup() {
 	EEPROM.get(PARK_ANGLE_ADDRESS, parkAngle);
 	EEPROM.get(UNPARK_ANGLE_ADDRESS, unparkAngle);
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
-	coverStatus = EEPROM.read(SHUTTER_STATUS_ADDRESS);
-	EEPROM.get(FOCUSER_POSITION_ADDRESS, currentPosition);
+	shutterStatus = EEPROM.read(SHUTTER_STATUS_ADDRESS);
+	EEPROM.get(FOCUSER_POSITION_ADDRESS, encoderPosition);
+	turns = EEPROM.read(ENCODER_TURNS_ADDRESS);
+	counts = readEncoderCounts();
+	setEncoderTurns((EEPROM.read(ENCODER_COUNTS_ADDRESS) << 8 ) | (EEPROM.read(ENCODER_COUNTS_ADDRESS + 1)));
 	#else
 	#ifdef USE_WC_EEPROM
 	pinMode(EEPROM_WC, OUTPUT);
@@ -141,12 +142,16 @@ void setup() {
 	unparkAngle = (uint16_t)(eepromReadLong(UNPARK_ANGLE_ADDRESS, 2) % 360);
 
 	brightness = (uint8_t)(eepromReadByte(BRIGHTNESS_ADDRESS) % 256);
-	coverStatus = (uint8_t)eepromReadByte(SHUTTER_STATUS_ADDRESS);
+	shutterStatus = (uint8_t)eepromReadByte(SHUTTER_STATUS_ADDRESS);
 
-	currentPosition = eepromReadLong(FOCUSER_POSITION_ADDRESS, 4);
+	turns = (int8_t)eepromReadByte(ENCODER_TURNS_ADDRESS) % 256;
+	counts = readEncoderCounts();
+	setEncoderTurns((int)eepromReadLong(ENCODER_COUNTS_ADDRESS, 2) % COUNTS_PER_REVOLUTION);
 	#endif
+	stepper.currentPosition = (uint32_t)(0.5 + (double)counts / ENCODER_MOTOR_RATIO);
 	servo.attach(SERVO, 0, 270);
-	servoPosition = (coverStatus == PARKED) ? parkAngle : unparkAngle;
+	servo.sync((shutterStatus == PARKED) ? parkAngle : unparkAngle);
+	servo.setSpeed(SERVO_INCREMENT, SERVO_INTERVAL);
 
     ledcAttach(LED, 1000, 8);				// make sure that the MOSFET's gate charge is small enough for maximum pin current of 20 mA
 	ledcWrite(LED, 0);
@@ -163,42 +168,47 @@ void setup() {
 
 	stepper.setMaxSpeed(STEPPER_SPEED);
 	stepper.setAcceleration(STEPPER_ACCELERATION);
-	stepper.setPinsInverted(false, false, true);		// dir, step, en
+	stepper.setPinsInverted(true, false, true);		// dir, step, en
 	stepper.setEnablePin(EN);
 	stepper.disableOutputs();
 
 	millisLastMove = millis();
 
-	if(currentPosition < 0) {
-		currentPosition = 0;
-	}
-
-	stepper.setCurrentPosition(currentPosition);
-	lastSavedPosition = currentPosition;
-	targetPosition = currentPosition;
+	lastSavedPosition = stepper.currentPosition;
+	stepper.targetPosition = stepper.currentPosition;
 
 	sensors.begin();
-	if(sensors.getDeviceCount()) {
-        delay(5);
-    }
-
-	stepperTicker.attach_ms(PERIOD_MS, stepperRun);
+	delay(500);
 }
 
 void loop() {
+	stepper.currentPosition = (uint32_t)(0.5 + getEncoderCounts() / ENCODER_MOTOR_RATIO);
+	if(movingAllowed) {
+		stepper.run();
+	}
+	servo.run();
+	if(!servo.isRunning()) {
+		if(shutterStatus == PARKING) {
+			shutterStatus = PARKED;
+		} else if(shutterStatus == UNPARKING) {
+			shutterStatus = UNPARKED;
+		}
+	}
 	if(stepper.distanceToGo() != 0) {
 		millisLastMove = millis();
-		currentPosition = stepper.currentPosition();
 	} else {
 		if(millis() - millisLastMove > DISABLE_DELAY) {
-			if(lastSavedPosition != currentPosition) {
+			if(lastSavedPosition != stepper.currentPosition && movingAllowed) {
+				movingAllowed = false;
 				#ifndef EXTERNAL_EEPROM
-				EEPROM.put(FOCUSER_POSITION_ADDRESS, currentPosition);
+				EEPROM.put(ENCODER_COUNTS_ADDRESS, counts);
+				EEPROM.update(ENCODER_TURNS_ADDRESS, turns);
 				EEPROM.commit();
 				#else
-				eepromWriteLong(FOCUSER_POSITION_ADDRESS, currentPosition, 4);
+				eepromWriteLong(ENCODER_COUNTS_ADDRESS, counts, 2);
+				eepromWriteByte(ENCODER_TURNS_ADDRESS, turns, false);
 				#endif
-				lastSavedPosition = currentPosition;
+				lastSavedPosition = stepper.currentPosition;
 			}
 			if(isEnabled) {
 				stepper.disableOutputs();
@@ -257,96 +267,65 @@ void loop() {
 }
 
 void focuserCommand(char* command) {
-	String temp = String(command);
+	String commandString = String(command);
 	String cmd, param;
-	int len = temp.length();
-	if(len >= 2) {
-		cmd = temp.substring(0, 2);
+	int length = commandString.length();
+	if(length >= 2) {
+		cmd = commandString.substring(0, 2);
 	} else {
-		cmd = temp.substring(0, 1);
+		cmd = commandString.substring(0, 1);
 	}
-	if(len > 2) {
-		param = temp.substring(2);
+	if(length > 2) {
+		param = commandString.substring(2);
 	}
-	// firmware value, always return "10"
-	if(cmd.equalsIgnoreCase("GV")) {
-		Serial.print("10#");
-	}
-	// get the current motor position
-	if(cmd.equalsIgnoreCase("GP")) {
-		currentPosition = stepper.currentPosition();
-		char tempString[6];
-		sprintf(tempString, "%04lX#", currentPosition);
-		Serial.print(tempString);
-	}
-	// get the target motor position
-	if(cmd.equalsIgnoreCase("GN")) {
-		char tempString[6];
-		sprintf(tempString, "%04lX#", targetPosition);
-		Serial.print(tempString);
-	}
-	// get the current temperature from DS1820 temperature sensor
-	if(cmd.equalsIgnoreCase("GT")) {
+	if(cmd.equals("GP")) {		// get the current motor position
+		char temp[6];
+		sprintf(temp, "%04lx#", stepper.currentPosition);
+		Serial.print(temp);
+	} else if(cmd.equals("GN")) {		// get the target motor position
+		char temp[6];
+		sprintf(temp, "%04lx#", stepper.targetPosition);
+		Serial.print(temp);
+	} else if(cmd.equals("GT")) {		// get the current temperature from DS1820 temperature sensor
 		sensors.requestTemperatures();
-		float temperature = sensors.getTempCByIndex(0);
-		if(temperature > 100 || temperature < -50) {
-			temperature = 0;
-		}
-		int16_t t_int = (int16_t)(temperature * 2);
-		char tempString[5];
-		sprintf(tempString, "%04X#", (int16_t)t_int);
-		Serial.print(tempString);
-	}
-	// get the temperature coefficient
-	if(cmd.equalsIgnoreCase("GC")) {
-		Serial.print((byte)tCoeff, HEX);
-		Serial.print('#');
-	}
-	// set the temperature coefficient
-	if(cmd.equalsIgnoreCase("SC")) {
-		if(param.length() > 4) {
-			param = param.substring(param.length() - 4);
-		}
-		if(param.startsWith("F")) {
-			tCoeff = ((0xFFFF - strtol(param.c_str(), NULL, 16)) / -2.0f) - 0.5f;
-		} else {
-			tCoeff = strtol(param.c_str(), NULL, 16) / 2.0f;
-		}
-	}
-	// motor is moving - 01 if moving, 00 otherwise
-	if(cmd.equalsIgnoreCase("GI")) {
-		if(stepper.distanceToGo() != 0) {
-			Serial.print("01#");
-		}
-		else {
-			Serial.print("00#");
-		}
-	}
-	// sync motor
-	if(cmd.equalsIgnoreCase("SP")) {
-		currentPosition = hexstr2long(param);
-		stepper.setCurrentPosition(currentPosition);
-	}
-	// set target motor position
-	if(cmd.equalsIgnoreCase("SN")) {
-		targetPosition = hexstr2long(param);
-	}
-	// initiate a move
-	if(cmd.equalsIgnoreCase("FG")) {
+		int32_t rawTemperature = sensors.getTempByIndex(0);
+		uint16_t temperature = (uint16_t)(rawTemperature + (1 << 15));
+		char temp[6];
+		sprintf(temp, "%04x#", (temperature > -7040 || temperature < 16000) ? (temperature + (1 << 15)) : 0);
+		Serial.print(temp);
+	} else if(cmd.equals("GC")) {		// get the temperature coefficient
+		char temp[6];
+		sprintf(temp, "%04x#", (uint16_t)(temperatureCoefficient * 256.0f));
+		Serial.print(temp);
+	} else if(cmd.equals("SC")) {		// set the temperature coefficient
+		temperatureCoefficient = (float)hexStringToLong(param) / 256.0f;		// TODO: specify degree of precision
+	} else if(cmd.equals("GI")) {		// motor is moving - 01 if moving, 00 otherwise
+		Serial.print(stepper.isRunning() ? "01#" : "00#");
+	} else if(cmd.equals("SP")) {		// sync motor
+		stepper.currentPosition = hexStringToLong(param);
+		encoderZero = (uint16_t)((uint32_t)(0.5 + (double)stepper.currentPosition * ENCODER_MOTOR_RATIO) % COUNTS_PER_REVOLUTION);
+		turns = (int8_t)(stepper.currentPosition * ENCODER_MOTOR_RATIO / COUNTS_PER_REVOLUTION);
+	} else if(cmd.equals("SN")) {		// set target motor position
 		stepper.enableOutputs();
 		isEnabled = true;
-		stepper.moveTo(targetPosition);
-	}
-	// stop a move
-	if(cmd.equalsIgnoreCase("FQ")) {
+		movingAllowed = true;
+		stepper.moveTo(hexStringToLong(param));
+	} else if(cmd.equals("FQ")) {		// stop a move
 		stepper.stop();
 		stepper.disableOutputs();
 		isEnabled = false;
+		movingAllowed = false;
+	} else if(cmd.equals("GE")) {		// get encoder counts
+		char temp[6];
+		sprintf(temp, "%04x#", readEncoderCounts());
+		Serial.print(temp);
+	} else if(cmd.equals("TC")) {		// toggle temperature compensation, 1 to enable, 0 to disable
+		temperatureCompensation = param.startsWith("1");
 	}
 }
 
 void flatcapCommand(char* command) {
-	char temp[9];
+	char temp[9] = {0};
     char* dat = command + 1;
 	char data[3] = {0};
 	strncpy(data, dat, 3);
@@ -354,80 +333,74 @@ void flatcapCommand(char* command) {
         /*
         Ping device
         Request: >P000#
-        Return : *Pid000#
+        Return : *P000#
         */
         case 'P': {
-            sprintf(temp, "*P%02d000#", deviceId);
-            Serial.print(temp);
+            Serial.print("*P000#");
 			break;
         }
 		/*
     	Get device status:
     	Request: >S000#
-    	Return : *SidMLC#
-    	M  = motor status (0 stopped, 1 running)
+    	Return : *SFLC#
+		F  = focuser (0 still, 1 moving)
     	L  = light status (0 off, 1 on)
-    	C  = cover status (0 moving, 1 parked, 2 unparked)
+    	C  = shutter status (0 parked, 1 unparked, 2 parking, 3 unparking)
         */
         case 'S': {
-            sprintf(temp, "*S%02d%01d%01d%01d#", deviceId, motorStatus, lightStatus, coverStatus);
+            sprintf(temp, "*S0%1d%1d#", lightStatus, shutterStatus);
             Serial.print(temp);
 			break;
         }
         /*
     	Unpark shutter
     	Request: >O000#
-    	Return : *Oid000#
+    	Return : *O000#
         */
         case 'O': {
     	    setShutter(UNPARKED);
-			sprintf(temp, "*O%02d000#", deviceId);
-    	    Serial.print(temp);
+    	    Serial.print(">O000#");
 			break;
         }
         /*
     	Park shutter
     	Request: >C000#
-    	Return : *Cid000#
+    	Return : *C000#
         */
         case 'C': {
     	    setShutter(PARKED);
-			sprintf(temp, "*C%02d000#", deviceId);
-    	    Serial.print(temp);
+    	    Serial.print("*C000#");
 			break;
         }
         /*
     	Turn light on
     	Request: >L000#
-    	Return : *Lid000#
+    	Return : *L000#
         */
         case 'L': {
-			if(coverStatus == PARKED) {
+			if(shutterStatus == PARKED) {
     	    	ledcWrite(LED, brightness);
 				lightStatus = ON;
 			}
-    	    sprintf(temp, "*L%02d000#", deviceId);
-    	    Serial.print(temp);
+    	    Serial.print("*L000#");
 			break;
         }
         /*
     	Turn light off
     	Request: >D000#
-    	Return : *Did000#
+    	Return : *D000#
         */
         case 'D': {
 			ledcWrite(LED, 0);
 			lightStatus = OFF;
-    	    sprintf(temp, "*D%02d000#", deviceId);
-    	    Serial.print(temp);
+    	    Serial.print("*D000#");
 			break;
         }
         /*
     	Set brightness
     	Request: >Bxxx#
-    	xxx = brightness value from 000-255
-    	Return : *Bidxxx#
-    	xxx = value that brightness was set from 000-255
+    	xxx = brightness from 000-255
+    	Return : *Bxxx#
         */
         case 'B': {
     	    brightness = atoi(data) % 256;
@@ -435,21 +408,20 @@ void flatcapCommand(char* command) {
 			EEPROM.update(BRIGHTNESS_ADDRESS, brightness);
 			EEPROM.commit();
 			#else
-			eepromWriteByte(BRIGHTNESS_ADDRESS, (byte)brightness, true);
+			eepromWriteByte(BRIGHTNESS_ADDRESS, (byte)brightness, false);
 			#endif
-    	    if(lightStatus == ON && coverStatus == PARKED) {
+    	    if(lightStatus == ON && shutterStatus == PARKED) {
     	    	ledcWrite(LED, brightness);
             }
-    	    sprintf(temp, "*B%02d%03d#", deviceId, brightness);
+    	    sprintf(temp, "*B%03d#", brightness);
             Serial.print(temp);
 			break;
         }
 		/*
     	Set shutter park angle
     	Request: >Zxxx#
-    	xxx = angle from 000-360
-    	Return : *Zidxxx#
-    	xxx = value that park angle was set from 000-360
+    	xxx = park angle from 000-360
+    	Return : *Zxxx#
         */
         case 'Z': {
     	    parkAngle = atoi(data) % 360;
@@ -457,21 +429,20 @@ void flatcapCommand(char* command) {
 			EEPROM.put(PARK_ANGLE_ADDRESS, (uint16_t)parkAngle);
 			EEPROM.commit();
 			#else
-			eepromWriteLong(PARK_ANGLE_ADDRESS, (unsigned long)parkAngle, 2);
+			eepromWriteLong(PARK_ANGLE_ADDRESS, (uint32_t)parkAngle, 2);
 			#endif
-    	    if(coverStatus == PARKED) {
-				moveServo(parkAngle);
+    	    if(shutterStatus == PARKED || shutterStatus == PARKING) {
+				servo.move(parkAngle);
             }
-    	    sprintf(temp, "*Z%02d%03d#", deviceId, parkAngle);
+    	    sprintf(temp, "*Z%03d#", parkAngle);
             Serial.print(temp);
 			break;
         }
 		/*
     	Set shutter unpark angle
     	Request: >Axxx#
-    	xxx = angle from 000-360
-    	Return : *Aidxxx#
-    	xxx = value that unpark angle was set from 000-360
+    	xxx = unpark angle from 000-360
+    	Return : *Axxx#
         */
         case 'A': {
     	    unparkAngle = atoi(data) % 360;
@@ -479,110 +450,133 @@ void flatcapCommand(char* command) {
 			EEPROM.put(UNPARK_ANGLE_ADDRESS, (uint16_t)unparkAngle);
 			EEPROM.commit();
 			#else
-			eepromWriteLong(UNPARK_ANGLE_ADDRESS, (unsigned long)unparkAngle, 2);
+			eepromWriteLong(UNPARK_ANGLE_ADDRESS, (uint32_t)unparkAngle, 2);
 			#endif
-    	    if(coverStatus == UNPARKED) {
-				moveServo(unparkAngle);
+    	    if(shutterStatus == UNPARKED || shutterStatus == UNPARKING) {
+				servo.move(unparkAngle);
             }
-    	    sprintf(temp, "*A%02d%03d#", deviceId, unparkAngle);
+    	    sprintf(temp, "*A%03d#", unparkAngle);
             Serial.print(temp);
 			break;
         }
 		/*
     	Get brightness
     	Request: >J000#
-    	Return : *Jidxxx#
-    	xxx = current brightness value from 000-255
+    	Return : *Jxxx#
+    	xxx = current brightness from 000-255
         */
         case 'J': {
-            sprintf(temp, "*J%02d%03d#", deviceId, brightness);
+            sprintf(temp, "*J%03d#", brightness);
             Serial.print(temp);
 			break;
         }
 		/*
     	Get shutter park angle
     	Request: >K000#
-    	Return : *Kidxxx#
-    	xxx = value that park angle was set from 000-360
+    	Return : *Kxxx#
+    	xxx = current park angle from 000-360
         */
         case 'K': {
-            sprintf(temp, "*K%02d%03d#", deviceId, parkAngle);
+            sprintf(temp, "*K%03d#", parkAngle);
             Serial.print(temp);
 			break;
         }
 		/*
     	Get shutter unpark angle
     	Request: >H000#
-    	Return : *Hidxxx#
-    	xxx = value that unpark angle was set from 000-360
+    	Return : *Hxxx#
+    	xxx = current unpark angle from 000-360
         */
         case 'H': {
-            sprintf(temp, "*H%02d%03d#", deviceId, unparkAngle);
+            sprintf(temp, "*H%03d#", unparkAngle);
             Serial.print(temp);
 			break;
         }
         /*
     	Get firmware version
     	Request: >V000#
-    	Return : *Vid001#
+    	Return : *V001#
         */
         case 'V': {
-            sprintf(temp, "*V%02d001#", deviceId);
-            Serial.print(temp);
+            Serial.print("*V002#");
 			break;
         }
     }
 }
 
 void setShutter(int shutter) {
-	if(shutter == UNKNOWN) {
+	if(shutter != PARKED && shutter != UNPARKED) {
 		return;
 	}
 	if(shutter == PARKED) {
 		ledcWrite(LED, 0);
 		lightStatus = OFF;
-		coverStatus = UNKNOWN;
-		moveServo(parkAngle);
+		shutterStatus = PARKING;
+		servo.move(parkAngle);
 	} else if(shutter == UNPARKED) {
-		coverStatus = UNKNOWN;
-		moveServo(unparkAngle);
+		shutterStatus = UNPARKING;
+		servo.move(unparkAngle);
 	}
-	coverStatus = shutter;
 	#ifndef EXTERNAL_EEPROM
 	EEPROM.update(SHUTTER_STATUS_ADDRESS, shutter);
 	EEPROM.commit();
 	#else
-	eepromWriteByte(SHUTTER_STATUS_ADDRESS, (byte)shutter, true);
+	eepromWriteByte(SHUTTER_STATUS_ADDRESS, (byte)shutter, false);
 	#endif
 }
 
-void moveServo(int angle) {
-	motorStatus = RUNNING;
-	int direction = (servoPosition > angle) ? -1 : 1;
-	while(abs((int)servoPosition - angle) >= SERVO_INCREMENT) {
-		servoPosition += SERVO_INCREMENT * direction;
-		servo.write(servoPosition);
-		delay(SERVO_DELAY);
+uint32_t hexStringToLong(String str) {
+	char buffer[str.length() + 1];
+  	str.toCharArray(buffer, str.length() + 1);
+  	return (uint32_t)strtol(buffer, NULL, 16);
+}
+
+int readEncoderCounts() {
+    Wire.beginTransmission(ENCODER_ADDRESS);
+    Wire.write(0x03);
+    Wire.endTransmission(false);
+    Wire.requestFrom((int)ENCODER_ADDRESS, 2);
+    if(Wire.available() < 2) {
+        return -1;
+    }
+    int angle_h = Wire.read();
+    int angle_l = Wire.read();
+	if(angle_h < 0 || angle_l < 0) {
+		return -2;
 	}
-	servo.write(angle);
-	servoPosition = angle;
-	delay(SERVO_DELAY);
-	motorStatus = STOPPED;
+    return (angle_h << 6) | (angle_l >> 2);
 }
 
-void stepperRun() {
-    stepper.run();
+void setEncoderTurns(int storedCounts) {
+    int delta = storedCounts - counts;
+    if(delta > COUNTS_PER_REVOLUTION / 2) {
+        turns++;
+    } else if (delta < -COUNTS_PER_REVOLUTION / 2) {
+        turns--;
+    }
 }
 
-long hexstr2long(String line) {
-    char buf[line.length() + 1];
-    line.toCharArray(buf, line.length() + 1);
-    return strtol(buf, NULL, 16);
+uint32_t getEncoderCounts() {
+	int newCount = readEncoderCounts();
+    for(int i = 0; i < 3 && newCount > COUNTS_PER_REVOLUTION; i++, newCount = readEncoderCounts()) {}		// try four times
+    if(newCount < 0 || newCount > COUNTS_PER_REVOLUTION) {
+        return (uint32_t)(0.5 + (double)stepper.currentPosition * ENCODER_MOTOR_RATIO);
+    }
+    int delta = newCount - counts;
+    if(delta > (COUNTS_PER_REVOLUTION >> 1)) {
+        delta -= COUNTS_PER_REVOLUTION;
+    } else if(delta < -(COUNTS_PER_REVOLUTION >> 1)) {
+        delta += COUNTS_PER_REVOLUTION;
+    }
+    encoderPosition += delta;
+    counts = newCount;
+	turns = (int8_t)(encoderPosition / COUNTS_PER_REVOLUTION);		// should be floored
+	return encoderPosition;
 }
 
 #ifdef EXTERNAL_EEPROM
 
-void eepromWriteLong(unsigned int address, unsigned long data, int length) {
+void eepromWriteLong(uint16_t address, uint32_t data, int length) {
 	#ifdef USE_WC_EEPROM
 	digitalWrite(EEPROM_WC, LOW);
 	delay(1);
@@ -595,12 +589,12 @@ void eepromWriteLong(unsigned int address, unsigned long data, int length) {
 	#endif
 }
 
-unsigned long eepromReadLong(unsigned int address, int length) {
+uint32_t eepromReadLong(uint16_t address, int length) {
 	byte data[4] = {0};
 	for(int i = 0; i < length; i++) {
 		data[4 - length + i] = eepromReadByte(address + i);
 	}
-	return (unsigned long)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
+	return (uint32_t)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | (data[3]));
 }
 
 void eepromWriteByte(int address, byte data, bool protectWrite) {

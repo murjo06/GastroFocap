@@ -15,7 +15,7 @@ The protocol is split into two "parts", one for the flatcap and one for the focu
 | >Bxxx#, *Bidxxx#						| set brightness to xxx, confirm
 | >Zxxx#, *Zidxxx#						| set park angle to xxx, confirm
 | >Axxx#, *Aidxxx#						| set unpark angle to xxx, confirm
-| >J000#, *Bidxxx#						| get brightness, returned brightness
+| >J000#, *Jidxxx#						| get brightness, returned brightness
 | >Hxxx#, *Hidxxx#						| get park angle, returned angle
 | >Kxxx#, *Kidxxx#						| get unpark angle, returned angle
 | >Vxxx#, *Vidxxx#						| get firmware version, returned firmware version
