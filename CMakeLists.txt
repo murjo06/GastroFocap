@@ -1,66 +1,41 @@
-# define the project name
 project(indi_gastro_focap C CXX)
 cmake_minimum_required(VERSION 3.16)
 
 include(GNUInstallDirs)
 
-# add our cmake_modules folder
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake_modules/")
 
-# find our required packages
+set(BIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
+set(DATA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share/indi/")
+set(INDI_DATA_DIR "${CMAKE_INSTALL_PREFIX}/share/indi")
+
 find_package(INDI REQUIRED)
 find_package(Nova REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(GSL REQUIRED)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(INDI_GASTRO_FOCAP_VERSION_MAJOR 2)
+set(INDI_GASTRO_FOCAP_VERSION_MINOR 0)
 
-# these will be used to set the version number in config.h and our driver's xml file
-set(CDRIVER_VERSION_MAJOR 2)
-set(CDRIVER_VERSION_MINOR 0)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/indi_gastro_focap.xml.cmake ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml )
 
-# do the replacement in the config.h
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/config.h
-)
-
-# do the replacement in the driver's xml file
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/indi_gastro_focap.xml.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml
-)
-
-# set our include directories to look for header files
-include_directories( ${CMAKE_CURRENT_BINARY_DIR})
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories( ${INDI_INCLUDE_DIR})
-include_directories( ${NOVA_INCLUDE_DIR})
-include_directories( ${EV_INCLUDE_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${INDI_INCLUDE_DIR})
+include_directories(${NOVA_INCLUDE_DIR})
+include_directories(${EV_INCLUDE_DIR})
 
 include(CMakeCommon)
 
-# tell cmake to build our executable
-add_executable(
-    indi_gastro_focap
-    indi_gastro_focap.cpp
-)
+add_executable(indi_gastro_focap indi_gastro_focap.cpp)
+target_link_libraries(indi_gastro_focap ${INDI_LIBRARIES} ${NOVA_LIBRARIES} ${GSL_LIBRARIES})
 
-# and link it to these libraries
-target_link_libraries(
-    indi_gastro_focap
-    ${INDI_LIBRARIES}
-    ${NOVA_LIBRARIES}
-    ${GSL_LIBRARIES}
-)
+if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
+    target_link_libraries(indi_gastro_focap rt)
+endif (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
 
-# tell cmake where to install our executable
 install(TARGETS indi_gastro_focap RUNTIME DESTINATION bin)
 
-# and where to put the driver's xml file.
-install(
-    FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml
-    DESTINATION ${INDI_DATA_DIR}
-)
+install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml DESTINATION ${INDI_DATA_DIR})
