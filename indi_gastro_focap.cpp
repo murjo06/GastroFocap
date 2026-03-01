@@ -200,7 +200,7 @@ bool Focap::readTemperatureCoefficient()
     if (sendCommand(":GC#", res) == false)
         return false;
 
-    uint16_t coefficient = 0;
+    uint coefficient = 0;
     int rc = sscanf(res, "%x", &coefficient);
     if (rc > 0)
         TemperatureSettingNP[Coefficient].setValue(static_cast<int16_t>(coefficient) / 256.0);
