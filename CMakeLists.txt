@@ -18,8 +18,8 @@ find_package(GSL REQUIRED)
 set(INDI_GASTRO_FOCAP_VERSION_MAJOR 2)
 set(INDI_GASTRO_FOCAP_VERSION_MINOR 0)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/indi_gastro_focap.xml.cmake ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/indi_gastro_focap.xml.cmake ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -32,10 +32,10 @@ include(CMakeCommon)
 add_executable(indi_gastro_focap indi_gastro_focap.cpp)
 target_link_libraries(indi_gastro_focap ${INDI_LIBRARIES} ${NOVA_LIBRARIES} ${GSL_LIBRARIES})
 
-if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
+if(CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
     target_link_libraries(indi_gastro_focap rt)
-endif (CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
+endif(CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
 
 install(TARGETS indi_gastro_focap RUNTIME DESTINATION bin)
 
-install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml DESTINATION ${INDI_DATA_DIR})
+install(FILES  ${CMAKE_CURRENT_BINARY_DIR}/indi_gastro_focap.xml DESTINATION ${INDI_DATA_DIR})
