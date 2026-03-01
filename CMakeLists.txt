@@ -1,5 +1,5 @@
 # define the project name
-project(indi-gastro-focap C CXX)
+project(indi_gastro_focap C CXX)
 cmake_minimum_required(VERSION 3.16)
 
 include(GNUInstallDirs)
@@ -17,8 +17,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # these will be used to set the version number in config.h and our driver's xml file
-set(CDRIVER_VERSION_MAJOR 1)
-set(CDRIVER_VERSION_MINOR 1)
+set(CDRIVER_VERSION_MAJOR 2)
+set(CDRIVER_VERSION_MINOR 0)
 
 # do the replacement in the config.h
 configure_file(
