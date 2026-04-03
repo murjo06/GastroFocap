@@ -60,26 +60,19 @@ enum shutterStatuses {
 	UNPARKING
 };
 
-/*
-! IMPORTANT:
-PARK_ANGLE_ADDRESS, UNPARK_ANGLE_ADDRESS and ENCODER_COUNTS store 16 bit integers (255 just isn't enough for the positions).
-That means they use two EEPROM addresses each (parkAngle uses addresses 1 and 2, for example)
-
-EEPROM storage is in little-endian, since this is what the ESP32 uses normally
-*/
+//EEPROM storage is in little-endian, since this is what the ESP32 uses normally
 enum addresses {
 	BRIGHTNESS_ADDRESS = 0,
 	PARK_ANGLE_ADDRESS = 1,
 	UNPARK_ANGLE_ADDRESS = 3,
 	SHUTTER_STATUS_ADDRESS = 5,
-    ENCODER_COUNTS_ADDRESS = 6,
-	ENCODER_TURNS_ADDRESS = 8
+	STEPPER_OFFSET_ADDRESS = 6,
+    STEPPER_POSITION_ADDRESS = 8
 };
 
-uint8_t deviceId = 99;				// id for gastro focap
 uint8_t lightStatus = OFF;
 uint8_t shutterStatus = PARKED;
-uint8_t brightness = 0;
+uint8_t brightness = 255;
 uint16_t parkAngle = 0;
 uint16_t unparkAngle = 0;
 
@@ -96,12 +89,11 @@ float temperatureCoefficient = 1.5f;		// calculated expansion coefficient in ste
 
 uint32_t lastSavedPosition = 0;
 int counts = 0;
-uint32_t encoderPosition = 0;
-uint16_t encoderZero = 0;
-int8_t turns = 0;
+int32_t encoderPosition = 0;
 uint32_t millisLastMove = 0;
 bool isEnabled = false;
 bool movingAllowed = false;
+int16_t stepperOffset = 0;
 
 bool temperatureCompensation = false;
 
@@ -120,6 +112,8 @@ void setup() {
 	while(Serial.available()) {
 		Serial.read();
 	}
+	Wire.begin(SDA, SCL);
+	Wire.setClock(100000);
 	#ifndef EXTERNAL_EEPROM
 	EEPROM.begin(10);
 	EEPROM.get(PARK_ANGLE_ADDRESS, parkAngle);
@@ -127,7 +121,7 @@ void setup() {
 	brightness = EEPROM.read(BRIGHTNESS_ADDRESS);
 	shutterStatus = EEPROM.read(SHUTTER_STATUS_ADDRESS);
 	EEPROM.get(FOCUSER_POSITION_ADDRESS, encoderPosition);
-	turns = EEPROM.read(ENCODER_TURNS_ADDRESS);
+	turns = EEPROM.read(ENCODER_TURNS_ADDRESS);				// TODO: change eeprom
 	counts = readEncoderCounts();
 	setEncoderTurns((EEPROM.read(ENCODER_COUNTS_ADDRESS) << 8 ) | (EEPROM.read(ENCODER_COUNTS_ADDRESS + 1)));
 	#else
@@ -135,8 +129,6 @@ void setup() {
 	pinMode(EEPROM_WC, OUTPUT);
 	digitalWrite(EEPROM_WC, HIGH);
 	#endif
-	Wire.begin(SDA, SCL);
-	Wire.setClock(100000);
 	parkAngle = (uint16_t)(eepromReadLong(PARK_ANGLE_ADDRESS, 2) % 360);
 
 	unparkAngle = (uint16_t)(eepromReadLong(UNPARK_ANGLE_ADDRESS, 2) % 360);
@@ -144,11 +136,9 @@ void setup() {
 	brightness = (uint8_t)(eepromReadByte(BRIGHTNESS_ADDRESS) % 256);
 	shutterStatus = (uint8_t)eepromReadByte(SHUTTER_STATUS_ADDRESS);
 
-	turns = (int8_t)eepromReadByte(ENCODER_TURNS_ADDRESS) % 256;
-	counts = readEncoderCounts();
-	setEncoderTurns((int)eepromReadLong(ENCODER_COUNTS_ADDRESS, 2) % COUNTS_PER_REVOLUTION);
+	stepperOffset = (int16_t)eepromReadLong(STEPPER_OFFSET_ADDRESS, 2);
+	stepper.currentPosition = static_cast<int32_t>(eepromReadLong(STEPPER_POSITION_ADDRESS, 4));
 	#endif
-	stepper.currentPosition = (uint32_t)(0.5 + (double)counts / ENCODER_MOTOR_RATIO);
 	servo.attach(SERVO, 0, 270);
 	servo.sync((shutterStatus == PARKED) ? parkAngle : unparkAngle);
 	servo.setSpeed(SERVO_INCREMENT, SERVO_INTERVAL);
@@ -182,7 +172,7 @@ void setup() {
 }
 
 void loop() {
-	stepper.currentPosition = (uint32_t)(0.5 + getEncoderCounts() / ENCODER_MOTOR_RATIO);
+	stepper.currentPosition = (int32_t)(0.5 + getEncoderPosition() / ENCODER_MOTOR_RATIO);
 	if(movingAllowed) {
 		stepper.run();
 	}
@@ -205,8 +195,8 @@ void loop() {
 				EEPROM.update(ENCODER_TURNS_ADDRESS, turns);
 				EEPROM.commit();
 				#else
-				eepromWriteLong(ENCODER_COUNTS_ADDRESS, counts, 2);
-				eepromWriteByte(ENCODER_TURNS_ADDRESS, turns, false);
+				eepromWriteLong(STEPPER_POSITION_ADDRESS, stepper.currentPosition, 4);
+				eepromWriteLong(STEPPER_OFFSET_ADDRESS, stepperOffset, 2);
 				#endif
 				lastSavedPosition = stepper.currentPosition;
 			}
@@ -280,18 +270,17 @@ void focuserCommand(char* command) {
 	}
 	if(cmd.equals("GP")) {		// get the current motor position
 		char temp[6];
-		sprintf(temp, "%04lx#", stepper.currentPosition);
+		sprintf(temp, "%04lx#", stepper.currentPosition - stepperOffset);
 		Serial.print(temp);
 	} else if(cmd.equals("GN")) {		// get the target motor position
 		char temp[6];
-		sprintf(temp, "%04lx#", stepper.targetPosition);
+		sprintf(temp, "%04lx#", stepper.targetPosition - stepperOffset);
 		Serial.print(temp);
 	} else if(cmd.equals("GT")) {		// get the current temperature from DS1820 temperature sensor
 		sensors.requestTemperatures();
 		int32_t rawTemperature = sensors.getTempByIndex(0);
-		uint16_t temperature = (uint16_t)(rawTemperature + (1 << 15));
 		char temp[6];
-		sprintf(temp, "%04x#", (temperature > -7040 || temperature < 16000) ? (temperature + (1 << 15)) : 0);
+		sprintf(temp, "%04x#", (rawTemperature >= -7040 || rawTemperature <= 16000) ? ((uint16_t)(rawTemperature + (1 << 15))) : 0);
 		Serial.print(temp);
 	} else if(cmd.equals("GC")) {		// get the temperature coefficient
 		char temp[6];
@@ -302,14 +291,12 @@ void focuserCommand(char* command) {
 	} else if(cmd.equals("GI")) {		// motor is moving - 01 if moving, 00 otherwise
 		Serial.print(stepper.isRunning() ? "01#" : "00#");
 	} else if(cmd.equals("SP")) {		// sync motor
-		stepper.currentPosition = hexStringToLong(param);
-		encoderZero = (uint16_t)((uint32_t)(0.5 + (double)stepper.currentPosition * ENCODER_MOTOR_RATIO) % COUNTS_PER_REVOLUTION);
-		turns = (int8_t)(stepper.currentPosition * ENCODER_MOTOR_RATIO / COUNTS_PER_REVOLUTION);
+		stepperOffset += hexStringToLong(param) - stepper.currentPosition;
 	} else if(cmd.equals("SN")) {		// set target motor position
 		stepper.enableOutputs();
 		isEnabled = true;
 		movingAllowed = true;
-		stepper.moveTo(hexStringToLong(param));
+		stepper.moveTo(hexStringToLong(param) + stepperOffset);
 	} else if(cmd.equals("FQ")) {		// stop a move
 		stepper.stop();
 		stepper.disableOutputs();
@@ -547,20 +534,11 @@ int readEncoderCounts() {
     return (angle_h << 6) | (angle_l >> 2);
 }
 
-void setEncoderTurns(int storedCounts) {
-    int delta = storedCounts - counts;
-    if(delta > COUNTS_PER_REVOLUTION / 2) {
-        turns++;
-    } else if (delta < -COUNTS_PER_REVOLUTION / 2) {
-        turns--;
-    }
-}
-
-uint32_t getEncoderCounts() {
+int32_t getEncoderPosition() {
 	int newCount = readEncoderCounts();
-    for(int i = 0; i < 3 && newCount > COUNTS_PER_REVOLUTION; i++, newCount = readEncoderCounts()) {}		// try four times
+    for(int i = 0; i < 3 && newCount > COUNTS_PER_REVOLUTION || newCount < 0; i++, newCount = readEncoderCounts()) {}		// try four times
     if(newCount < 0 || newCount > COUNTS_PER_REVOLUTION) {
-        return (uint32_t)(0.5 + (double)stepper.currentPosition * ENCODER_MOTOR_RATIO);
+        return 0;
     }
     int delta = newCount - counts;
     if(delta > (COUNTS_PER_REVOLUTION >> 1)) {
@@ -568,9 +546,8 @@ uint32_t getEncoderCounts() {
     } else if(delta < -(COUNTS_PER_REVOLUTION >> 1)) {
         delta += COUNTS_PER_REVOLUTION;
     }
-    encoderPosition += delta;
     counts = newCount;
-	turns = (int8_t)(encoderPosition / COUNTS_PER_REVOLUTION);		// should be floored
+	encoderPosition += delta;
 	return encoderPosition;
 }
 

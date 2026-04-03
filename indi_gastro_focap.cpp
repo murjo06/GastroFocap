@@ -182,7 +182,7 @@ bool Focap::readTemperature()
     if (rc > 0)
     {
         // Signed hex
-        TemperatureNP[0].setValue(static_cast<int16_t>(temp) / 2.0);
+        TemperatureNP[0].setValue((static_cast<int32_t>(temp) - (1 << 15)) / 128.0);
     }
     else
     {
@@ -242,7 +242,7 @@ bool Focap::isMoving()
         return false;
 
     // JM 2020-03-13: 01# and 1# should be both accepted
-    if (strstr(res, "1#"))
+    if (strstr(res, "1#") || strstr(res, "01#"))
         return true;
     else if (strstr(res, "0#"))
         return false;
