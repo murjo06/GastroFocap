@@ -80,7 +80,6 @@ class Focap : public INDI::DefaultDevice, public INDI::LightBoxInterface, public
         uint16_t productID{ 0 };
 
         uint8_t simulationWorkCounter{ 0 };
-        uint8_t prevCoverStatus{ 0xFF };
         uint8_t prevLightStatus{ 0xFF };
         uint8_t prevFlatcapStatus{ 0xFF };
         uint8_t prevFocuserStatus{ 0xFF};

@@ -35,12 +35,12 @@
 #define TMC_ADDRESS 0b00	 		// TMC2209 driver address according to MS1 and MS2
 #define R_SENSE 0.1f				// my board uses R100 resistors because of the JLC parts library
 
-#define RMS_CURRENT 500
+#define RMS_CURRENT 600
 
 #define TEMP 13
 
-#define STEPPER_SPEED 25
-#define STEPPER_ACCELERATION 25
+#define STEPPER_SPEED 5
+#define STEPPER_ACCELERATION 5
 
 #define SERVO_INCREMENT 1			// in degrees
 #define SERVO_INTERVAL 20			// delay in ms after each servo increment, speed of the servo can be calculated by
@@ -109,9 +109,6 @@ void setup() {
 	while(!Serial || !Serial2) {
 		delay(5);
 	}
-	while(Serial.available()) {
-		Serial.read();
-	}
 	Wire.begin(SDA, SCL);
 	Wire.setClock(100000);
 	#ifndef EXTERNAL_EEPROM
@@ -151,8 +148,8 @@ void setup() {
 	TMCdriver.rms_current(RMS_CURRENT);
 	TMCdriver.microsteps(0);
 
-	TMCdriver.en_spreadCycle(false);
-	TMCdriver.pwm_autoscale(true);			// needed for stealthChop
+	TMCdriver.en_spreadCycle(true);
+	//TMCdriver.pwm_autoscale(false);			// true for stealthChop
 	TMCdriver.I_scale_analog(false);
 	TMCdriver.pdn_disable(true);
 
@@ -168,7 +165,7 @@ void setup() {
 	stepper.targetPosition = stepper.currentPosition;
 
 	sensors.begin();
-	delay(500);
+	delay(1000);
 }
 
 void loop() {
@@ -270,11 +267,11 @@ void focuserCommand(char* command) {
 	}
 	if(cmd.equals("GP")) {		// get the current motor position
 		char temp[6];
-		sprintf(temp, "%04lx#", stepper.currentPosition - stepperOffset);
+		sprintf(temp, "%04lx#", stepper.currentPosition + stepperOffset);
 		Serial.print(temp);
 	} else if(cmd.equals("GN")) {		// get the target motor position
 		char temp[6];
-		sprintf(temp, "%04lx#", stepper.targetPosition - stepperOffset);
+		sprintf(temp, "%04lx#", stepper.targetPosition + stepperOffset);
 		Serial.print(temp);
 	} else if(cmd.equals("GT")) {		// get the current temperature from DS1820 temperature sensor
 		sensors.requestTemperatures();
@@ -288,15 +285,15 @@ void focuserCommand(char* command) {
 		Serial.print(temp);
 	} else if(cmd.equals("SC")) {		// set the temperature coefficient
 		temperatureCoefficient = (float)hexStringToLong(param) / 256.0f;		// TODO: specify degree of precision
-	} else if(cmd.equals("GI")) {		// motor is moving - 01 if moving, 00 otherwise
-		Serial.print(stepper.isRunning() ? "01#" : "00#");
+	} else if(cmd.equals("GI")) {		// motor is moving - 1 if moving, 0 otherwise
+		Serial.print(stepper.isRunning() && movingAllowed ? "1#" : "0#");
 	} else if(cmd.equals("SP")) {		// sync motor
-		stepperOffset += hexStringToLong(param) - stepper.currentPosition;
+		stepperOffset = hexStringToLong(param) - stepper.currentPosition;
 	} else if(cmd.equals("SN")) {		// set target motor position
 		stepper.enableOutputs();
 		isEnabled = true;
 		movingAllowed = true;
-		stepper.moveTo(hexStringToLong(param) + stepperOffset);
+		stepper.moveTo(hexStringToLong(param) - stepperOffset);
 	} else if(cmd.equals("FQ")) {		// stop a move
 		stepper.stop();
 		stepper.disableOutputs();
@@ -346,6 +343,8 @@ void flatcapCommand(char* command) {
         */
         case 'O': {
     	    setShutter(UNPARKED);
+			ledcWrite(LED, 0);
+			lightStatus = OFF;
     	    Serial.print(">O000#");
 			break;
         }

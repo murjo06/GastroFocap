@@ -241,10 +241,9 @@ bool Focap::isMoving()
     if (sendCommand(":GI#", res) == false)
         return false;
 
-    // JM 2020-03-13: 01# and 1# should be both accepted
-    if (strstr(res, "1#") || strstr(res, "01#"))
+    if (strstr(res, "1"))
         return true;
-    else if (strstr(res, "0#"))
+    else if (strstr(res, "0"))
         return false;
 
     LOGF_ERROR("Unknown error: isMoving value (%s)", res);
@@ -650,9 +649,11 @@ bool Focap::getUnparkAngle()
 
 bool Focap::EnableLightBox(bool enable)
 {
-
     if (ParkCapSP[1].getState() == ISS_ON)
     {
+        if(!enable) {
+            return true;
+        }
         LOG_ERROR("Cannot control light while cap is unparked.");
         return false;
     }
@@ -661,8 +662,7 @@ bool Focap::EnableLightBox(bool enable)
     {
         return true;
     }
-    char response[RES_LENGTH];
-    return sendCommand(enable ? ">L000#" : ">D000#", response);
+    return sendCommand(enable ? ">L000#" : ">D000#");
 }
 
 bool Focap::getStatus()
@@ -729,64 +729,53 @@ bool Focap::getStatus()
         }
     }
 
-    if (coverStatus != prevCoverStatus)
+    switch (coverStatus)
     {
-        prevCoverStatus = coverStatus;
-
-        statusUpdated = true;
-
-        switch (coverStatus)
+    case 0:
+        IUSaveText(&StatusT[0], "Parked");
+        if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
         {
-        case 0:
-            IUSaveText(&StatusT[0], "Parked");
-            if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
-            {
-                ParkCapSP.reset();
-                ParkCapSP[0].setState(ISS_ON);
-                ParkCapSP.setState(IPS_OK);
-                LOG_INFO("Cover closed.");
-                ParkCapSP.apply();
-            }
-            break;
-
-        case 1:
-            IUSaveText(&StatusT[0], "Unparked");
-            if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
-            {
-                ParkCapSP.reset();
-                ParkCapSP[1].setState(ISS_ON);
-                ParkCapSP.setState(IPS_OK);
-                LOG_INFO("Cover open.");
-                ParkCapSP.apply();
-            }
-            break;
-
-        case 2:
-            IUSaveText(&StatusT[0], "Parking");
-            if (ParkCapSP.getState() == IPS_OK || ParkCapSP.getState() == IPS_IDLE)
-            {
-                ParkCapSP.reset();
-                ParkCapSP[0].setState(ISS_ON);
-                ParkCapSP.setState(IPS_BUSY);
-                ParkCapSP.apply();
-            }
-            break;
-
-        case 3:
-            IUSaveText(&StatusT[0], "Unparking");
-            if (ParkCapSP.getState() == IPS_OK || ParkCapSP.getState() == IPS_IDLE)
-            {
-                ParkCapSP.reset();
-                ParkCapSP[1].setState(ISS_ON);
-                ParkCapSP.setState(IPS_BUSY);
-                ParkCapSP.apply();
-            }
-            break;
-
-        default:
-            IUSaveText(&StatusT[0], "Timed out");
-            break;
+            ParkCapSP.reset();
+            ParkCapSP[0].setState(ISS_ON);
+            ParkCapSP.setState(IPS_OK);
+            LOG_INFO("Cover closed.");
+            ParkCapSP.apply();
         }
+        break;
+    case 1:
+        IUSaveText(&StatusT[0], "Unparked");
+        if (ParkCapSP.getState() == IPS_BUSY || ParkCapSP.getState() == IPS_IDLE)
+        {
+            ParkCapSP.reset();
+            ParkCapSP[1].setState(ISS_ON);
+            ParkCapSP.setState(IPS_OK);
+            LOG_INFO("Cover open.");
+            ParkCapSP.apply();
+        }
+        break;
+    case 2:
+        IUSaveText(&StatusT[0], "Parking");
+        if (ParkCapSP.getState() == IPS_OK || ParkCapSP.getState() == IPS_IDLE)
+        {
+            ParkCapSP.reset();
+            ParkCapSP[0].setState(ISS_ON);
+            ParkCapSP.setState(IPS_BUSY);
+            ParkCapSP.apply();
+        }
+        break;
+    case 3:
+        IUSaveText(&StatusT[0], "Unparking");
+        if (ParkCapSP.getState() == IPS_OK || ParkCapSP.getState() == IPS_IDLE)
+        {
+            ParkCapSP.reset();
+            ParkCapSP[1].setState(ISS_ON);
+            ParkCapSP.setState(IPS_BUSY);
+            ParkCapSP.apply();
+        }
+        break;
+    default:
+        IUSaveText(&StatusT[0], "Timed out");
+        break;
     }
 
     if (lightStatus != prevLightStatus)
@@ -813,10 +802,7 @@ bool Focap::getStatus()
         }
     }
 
-    if (statusUpdated)
-    {
-        IDSetText(&StatusTP, nullptr);
-    }
+    IDSetText(&StatusTP, nullptr);
 
     return true;
 }
