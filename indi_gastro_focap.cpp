@@ -711,22 +711,13 @@ bool Focap::getStatus()
     char lightStatus = *(response + 3) - '0';
     char coverStatus = *(response + 4) - '0';
 
-    bool statusUpdated = false;
-
-    if (focuserStatus != prevFocuserStatus)
+    if (focuserStatus)
     {
-        prevFocuserStatus = focuserStatus;
-
-        statusUpdated = true;
-
-        if (focuserStatus)
-        {
-            IUSaveText(&StatusT[2], "Moving");
-        }
-        else
-        {
-            IUSaveText(&StatusT[2], "Stopped");
-        }
+        IUSaveText(&StatusT[2], "Moving");
+    }
+    else
+    {
+        IUSaveText(&StatusT[2], "Stopped");
     }
 
     switch (coverStatus)
@@ -778,28 +769,19 @@ bool Focap::getStatus()
         break;
     }
 
-    if (lightStatus != prevLightStatus)
+    if (lightStatus)
     {
-        prevLightStatus = lightStatus;
-
-        statusUpdated = true;
-
-        switch (lightStatus)
-        {
-        case 0:
-            IUSaveText(&StatusT[1], "Off");
-            LightSP[1].setState(ISS_ON);
-            LightSP[0].setState(ISS_OFF);
-            LightSP.apply();
-            break;
-
-        case 1:
-            IUSaveText(&StatusT[1], "On");
-            LightSP[0].setState(ISS_ON);
-            LightSP[1].setState(ISS_OFF);
-            LightSP.apply();
-            break;
-        }
+        IUSaveText(&StatusT[1], "Off");
+        LightSP[1].setState(ISS_ON);
+        LightSP[0].setState(ISS_OFF);
+        LightSP.apply();
+    }
+    else
+    {
+        IUSaveText(&StatusT[1], "On");
+        LightSP[0].setState(ISS_ON);
+        LightSP[1].setState(ISS_OFF);
+        LightSP.apply();
     }
 
     IDSetText(&StatusTP, nullptr);
@@ -909,12 +891,8 @@ bool Focap::getBrightness()
         return false;
     }
 
-    if (brightnessValue != prevBrightness)
-    {
-        prevBrightness = brightnessValue;
-        LightIntensityNP[0].setValue(brightnessValue);
-        LightIntensityNP.apply();
-    }
+    LightIntensityNP[0].setValue(brightnessValue);
+    LightIntensityNP.apply();
 
     return true;
 }
@@ -950,12 +928,8 @@ bool Focap::SetLightBoxBrightness(uint16_t value)
         return false;
     }
 
-    if (brightnessValue != prevBrightness)
-    {
-        prevBrightness = brightnessValue;
-        LightIntensityNP[0].setValue(brightnessValue);
-        LightIntensityNP.apply();
-    }
+    LightIntensityNP[0].setValue(brightnessValue);
+    LightIntensityNP.apply();
 
     return true;
 }

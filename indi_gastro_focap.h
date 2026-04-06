@@ -80,12 +80,6 @@ class Focap : public INDI::DefaultDevice, public INDI::LightBoxInterface, public
         uint16_t productID{ 0 };
 
         uint8_t simulationWorkCounter{ 0 };
-        uint8_t prevLightStatus{ 0xFF };
-        uint8_t prevFlatcapStatus{ 0xFF };
-        uint8_t prevFocuserStatus{ 0xFF};
-        uint16_t prevBrightness{ 0xFF };
-        uint16_t prevParkAngle{ 0 };
-        uint16_t prevUnparkAngle{ 0 };
 
         Connection::Serial *serialConnection{ nullptr };
 
