@@ -771,16 +771,16 @@ bool Focap::getStatus()
 
     if (lightStatus)
     {
-        IUSaveText(&StatusT[1], "Off");
-        LightSP[1].setState(ISS_ON);
-        LightSP[0].setState(ISS_OFF);
+        IUSaveText(&StatusT[1], "On");
+        LightSP[0].setState(ISS_ON);
+        LightSP[1].setState(ISS_OFF);
         LightSP.apply();
     }
     else
     {
-        IUSaveText(&StatusT[1], "On");
-        LightSP[0].setState(ISS_ON);
-        LightSP[1].setState(ISS_OFF);
+        IUSaveText(&StatusT[1], "Off");
+        LightSP[1].setState(ISS_ON);
+        LightSP[0].setState(ISS_OFF);
         LightSP.apply();
     }
 

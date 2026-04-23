@@ -332,7 +332,7 @@ void flatcapCommand(char* command) {
     	C  = shutter status (0 parked, 1 unparked, 2 parking, 3 unparking)
         */
         case 'S': {
-            sprintf(temp, "*S0%1d%1d#", lightStatus, shutterStatus);
+            sprintf(temp, "*S%1d%1d%1d#", (uint8_t)stepper.isRunning(), lightStatus, shutterStatus);
             Serial.print(temp);
 			break;
         }
